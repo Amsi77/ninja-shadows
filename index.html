@@ -111,6 +111,7 @@ body.ctl-edit .tb .v{border-style:dashed;border-color:#ffd98a}
 .pausebtn span{display:grid;place-items:center;width:30px;height:30px;margin:auto;border-radius:50%;font-size:13px;color:#fff;
   background:rgba(14,16,30,.55);border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(4px)}
 .pausebtn[hidden]{display:none}
+.sndbtn{left:56.5%}
 .ovl{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;background:rgba(6,6,16,.55);direction:rtl;padding:8px}
 .ovl.light{background:rgba(6,6,16,.25);align-items:flex-start}
 .ovl[hidden]{display:none}
@@ -197,6 +198,7 @@ html,body{overscroll-behavior:none}
       </div>
     </div>
     <button type="button" class="pausebtn" id="btnPause" aria-label="השהיה"><span>⏸</span></button>
+    <button type="button" class="pausebtn sndbtn" id="btnSnd" aria-label="השתקה"><span>🔊</span></button>
     <button type="button" class="shopbtn" id="btnShop" hidden>⬆ שדרוגים</button>
     <div class="ovl" id="storyBox" hidden>
       <div class="card story">
@@ -214,6 +216,7 @@ html,body{overscroll-behavior:none}
       <div class="card">
         <h2>השהיה</h2>
         <button type="button" data-p="resume" class="primary">▶ המשך משחק</button>
+        <div class="row"><button type="button" data-p="music" id="pmMusic">🎵 מוזיקה: פועלת</button><button type="button" data-p="sfx" id="pmSfx">💥 צלילים: פועלים</button></div>
         <button type="button" data-p="settings">⚙ הגדרות פקדים</button>
         <button type="button" data-p="savequit">💾 שמור וצא</button>
         <button type="button" data-p="menu">⌂ חזרה לתפריט הראשי</button>
@@ -1515,6 +1518,8 @@ document.getElementById('pauseMenu').addEventListener('click', e => {
   else if (p === 'savequit') { writeSave(safeSpot()); toTitle(); }
   else if (p === 'menu') toTitle();
   else if (p === 'exit') askExit();
+  else if (p === 'music') { if (S.muted) { S.muted = false; S.musOff = false; S.sfxOff = true; } else S.musOff = !S.musOff; saveS(); applyMute(); }
+  else if (p === 'sfx') { if (S.muted) { S.muted = false; S.sfxOff = false; S.musOff = true; } else S.sfxOff = !S.sfxOff; saveS(); applyMute(); }
 });
 document.getElementById('tutOk').addEventListener('click', () => { document.getElementById('touchTut').hidden = true; S.touchTut = 1; saveS(); });
 function maybeTutorial(){
@@ -3673,7 +3678,7 @@ function frame(now){
     }
   } else { acc = 0; G.tick++; clearPressed(); }
   visuals(rdt);
-  { const pb = document.getElementById('btnPause'), want = !(G.scene === 'play' || G.scene === 'pause' || G.scene === 'continue'); if (pb.hidden !== want) pb.hidden = want; }
+  { const pb = document.getElementById('btnPause'), want = !(G.scene === 'play' || G.scene === 'pause' || G.scene === 'continue'); if (pb.hidden !== want) { pb.hidden = want; document.getElementById('btnSnd').hidden = want; } }
   continueStep(rdt);
 
   cx.setTransform(SC * RS, 0, 0, SC * RS, 0, 0);
@@ -4171,10 +4176,15 @@ function applyQuality(){
   if (window.R3 && R3.setQuality) R3.setQuality(S.q);
 }
 function applyMute(){
-  if (master) master.gain.value = S.muted ? 0 : S.vol;
-  if (musBus) musBus.gain.value = S.muted ? 0 : S.mus;
+  if (master) master.gain.value = S.muted || S.sfxOff ? 0 : S.vol;
+  if (musBus) musBus.gain.value = S.muted || S.musOff ? 0 : S.mus;
   elMute.textContent = S.muted ? '🔇 מושתק' : '🔊 השתק';
+  const sb = document.getElementById('btnSnd'); if (sb) sb.firstElementChild.textContent = S.muted ? '🔇' : '🔊';
+  const pm = document.getElementById('pmMusic'), ps = document.getElementById('pmSfx');
+  if (pm) pm.textContent = '🎵 מוזיקה: ' + (S.muted || S.musOff ? 'כבויה' : 'פועלת');
+  if (ps) ps.textContent = '💥 צלילים: ' + (S.muted || S.sfxOff ? 'כבויים' : 'פועלים');
 }
+document.getElementById('btnSnd').addEventListener('click', e => { e.preventDefault(); S.muted = !S.muted; saveS(); ac(); applyMute(); e.currentTarget.blur(); });
 elQ.addEventListener('change', () => { S.q = Number(elQ.value); saveS(); applyQuality(); });
 elMute.addEventListener('click', () => { S.muted = !S.muted; saveS(); ac(); applyMute(); });
 window.addEventListener('keydown', e => { if (e.code === 'KeyM' && !(e.target && e.target.tagName === 'INPUT')) { S.muted = !S.muted; saveS(); ac(); applyMute(); } });
