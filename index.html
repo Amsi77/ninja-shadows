@@ -222,6 +222,7 @@ html,body{overscroll-behavior:none}
         <button type="button" data-p="menu">⌂ חזרה לתפריט הראשי</button>
         <button type="button" data-p="exit">🚪 יציאה מהמשחק</button>
         <small>המשחק עצור. השמירה נשמרת בדפדפן ובמכשיר הזה.</small>
+        <small class="credits">מוזיקה: atlasaudio (Pixabay) · Kevin MacLeod (incompetech.com), Licensed under Creative Commons: By Attribution 4.0</small>
       </div>
     </div>
     <div class="ovl" id="exitAsk" hidden>
@@ -1049,7 +1050,63 @@ function instNote(tr, hz, t, spb){
   if (tr.inst === 'bell')  { synth(hz * 2, t, 1.8, { type: 'sine', vol: 0.06, att: 0.003, rev: 0.6 }); synth(hz * 5.04, t, 0.6, { type: 'sine', vol: 0.016, rev: 0.6 }); }
   if (tr.inst === 'saw')   synth(hz, t, spb * 0.9, { type: 'sawtooth', detune: [-12, 0, 12], vol: 0.045, cut0: 2600, cut: 700, sweep: 0.1, q: 2, rev: 0.12 });
 }
+// ---- long stage music: streamed files beside the page (one per district + one for bosses) ----
+// Streaming keeps memory low on phones. If a file is missing (offline copy, claude.ai page), the embedded loop plays instead.
+const MUSIC_FILES = ['music/eiffel.mp3', 'music/louvre.mp3', 'music/notredame.mp3', 'music/montmartre.mp3'], BOSS_FILE = 'music/boss.mp3';
+const ME = {};
+function meGet(url){
+  if (ME[url]) return ME[url];
+  const el = new Audio(); el.loop = true; el.preload = 'auto';
+  const rec = { url: url, el: el, g: null, ok: null };
+  el.addEventListener('canplaythrough', () => { rec.ok = true; }, { once: true });
+  el.addEventListener('error', () => { rec.ok = false; }, { once: true });
+  el.src = url;
+  ME[url] = rec; return rec;
+}
+function meWire(rec){
+  if (rec.g || !AC) return;
+  try { const src = AC.createMediaElementSource(rec.el); rec.g = AC.createGain(); rec.g.gain.value = 0.0001; src.connect(rec.g); rec.g.connect(musBus); }
+  catch (e) { rec.ok = false; }
+}
+function fadeOutCur(){
+  const c = MUS.cur; MUS.cur = null;
+  if (!c) return;
+  if (c.type === 'file') { c.rec.g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.4); const el = c.rec.el; setTimeout(() => { if (!MUS.cur || MUS.cur.rec !== c.rec) el.pause(); }, 1800); }
+  else if (MUS.jack) { const j = MUS.jack; MUS.jack = null; j.g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.25); j.src.stop(AC.currentTime + 1.2); }
+}
+function musicFiles(){
+  if (!AC) return false;
+  const on = MUS.on && G.scene !== 'title' && G.scene !== 'over' && G.scene !== 'win';
+  if (!on) { if (MUS.cur) fadeOutCur(); return true; }
+  const url = MUS.boss ? BOSS_FILE : MUSIC_FILES[G.stage] || MUSIC_FILES[0];
+  const rec = meGet(url);
+  if (MUS.boss) meGet(MUSIC_FILES[G.stage] || MUSIC_FILES[0]); else meGet(BOSS_FILE);   // keep the other one ready
+  if (rec.ok === true) {
+    meWire(rec);
+    if (!MUS.cur || MUS.cur.rec !== rec) {                    // crossfade into this stage's (or the boss) track
+      fadeOutCur();
+      if (rec.el.paused) { if (!MUS.boss && rec.el.currentTime > rec.el.duration - 5) rec.el.currentTime = 0; rec.el.play().catch(() => {}); }
+      rec.g.gain.cancelScheduledValues(AC.currentTime); rec.g.gain.setTargetAtTime(0.85, AC.currentTime, 0.5);
+      MUS.cur = { type: 'file', rec: rec }; MUS.duck = 0.85;
+    }
+    const duck = (G.scene === 'continue' || G.scene === 'clear' || (G.scene === 'pause' && G.pausedFrom === 'continue')) ? 0.3 : 0.85;
+    if (MUS.duck !== duck) { MUS.duck = duck; rec.g.gain.setTargetAtTime(duck, AC.currentTime, 0.2); }
+    return true;
+  }
+  if (rec.ok === false) return false;                          // no file: the embedded loop takes over
+  return !!MUS.cur;                                            // still loading: keep whatever is playing
+}
+// the audio clock stops on pause, but streamed music must be paused by hand (and resumed at the same point)
+function musicPause(stop){
+  if (!MUS.cur || MUS.cur.type !== 'file') return;
+  const el = MUS.cur.rec.el;
+  if (stop) el.pause(); else el.play().catch(() => {});
+}
 function jackTick(){
+  if (musicFiles()) return MUS.cur && MUS.cur.type === 'file' ? true : jackTickEmbedded();
+  return jackTickEmbedded();
+}
+function jackTickEmbedded(){
   if (!AC || !AUD.music) return false;
   const want = MUS.on && !MUS.boss && S.mus > 0;
   if (want && !MUS.jack) {
@@ -1058,8 +1115,9 @@ function jackTick(){
     g.gain.setValueAtTime(0.0001, AC.currentTime); g.gain.exponentialRampToValueAtTime(0.85, AC.currentTime + 0.6);
     src.connect(g); g.connect(musBus); src.start(AC.currentTime, b._ls || 0);
     MUS.jack = { src: src, g: g };
+    if (!MUS.cur) MUS.cur = { type: 'jack' };
   } else if (!want && MUS.jack) {
-    const j = MUS.jack; MUS.jack = null;
+    const j = MUS.jack; MUS.jack = null; if (MUS.cur && MUS.cur.type === 'jack') MUS.cur = null;
     j.g.gain.setTargetAtTime(0.0001, AC.currentTime, 0.25); j.src.stop(AC.currentTime + 1.2);
   }
   if (MUS.jack) {
@@ -1071,7 +1129,7 @@ function jackTick(){
 function musicTick(){
   const hasFile = jackTick();
   if (!AC || !MUS.on || S.mus <= 0) return;
-  if (hasFile && !MUS.boss) return;                       // the chosen track is playing; the synth only scores the boss
+  if (hasFile && (!MUS.boss || (MUS.cur && MUS.cur.type === 'file'))) return;   // a real track is playing; the synth is only a last fallback
   musFx(); musBuses();
   // intensity: exploring (0) / fighting (1); the drum layer glides between them
   const fighting = G.scene === 'play' && (G.boss || G.foes.some(f => f.alive && Math.abs(f.x - G.cam - VW / 2) < VW * 0.7));
@@ -2815,6 +2873,7 @@ function drawTitle(){
   cx.font = '600 8px Heebo, sans-serif'; cx.fillStyle = '#8d8ab0';
   cx.fillText('חצים לבחירה · Enter לאישור · במגע: הקש על האפשרות', VW / 2, 204);
   cx.font = '600 7px Heebo, sans-serif'; cx.fillStyle = '#7a78a0'; cx.fillText('השמירה נשמרת בדפדפן ובמכשיר הזה בלבד, וניקוי נתוני הדפדפן מוחק אותה', VW / 2, 250);
+  cx.font = '500 6px Heebo, sans-serif'; cx.fillStyle = '#6a6890'; cx.fillText('Music: atlasaudio (Pixabay) · Kevin MacLeod (incompetech.com), CC BY 4.0', VW / 2, 262);
   cx.fillStyle = '#6a6890';
   if (G.twoIdx) {
     cx.fillText('1P: חצים · J ירי · K אגרוף · L בעיטה · O חסימה · U גלגול · I נשק', VW / 2, 218);
@@ -3608,6 +3667,7 @@ document.getElementById('exitNo').addEventListener('click', exitNo);
 function pauseGame(){
   if (G.scene !== 'play' && G.scene !== 'continue') return;
   G.pausedFrom = G.scene; G.scene = 'pause';
+  musicPause(true);
   if (AC && AC.state === 'running') AC.suspend();
   dropKeys(); clearPressed(); releaseTouch();
   document.getElementById('pauseMenu').hidden = false;
@@ -3620,6 +3680,7 @@ function resumeGame(){
   G.scene = G.pausedFrom || 'play'; G.pausedFrom = null;
   dropKeys(); clearPressed(); releaseTouch();
   if (AC && AC.state === 'suspended') AC.resume();
+  musicPause(false);
   G.contAcc = Math.min(G.contAcc, 0.5);
 }
 function toTitle(){
@@ -4217,7 +4278,7 @@ document.getElementById('btnFull').addEventListener('click', () => {
 // leaving the tab or the app pauses the game and drops held keys
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.scene === 'play') { G.scene = 'pause'; MUS.on = false; } });
 
-window.__yoru = { G: G, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
+window.__yoru = { G: G, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
 loadSprites().then(() => { try { if (window.THREE) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
 })();
 </script>
