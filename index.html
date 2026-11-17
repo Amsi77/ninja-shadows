@@ -217,7 +217,15 @@ html,body{overscroll-behavior:none}
         <button type="button" data-p="settings">⚙ הגדרות פקדים</button>
         <button type="button" data-p="savequit">💾 שמור וצא</button>
         <button type="button" data-p="menu">⌂ חזרה לתפריט הראשי</button>
+        <button type="button" data-p="exit">🚪 יציאה מהמשחק</button>
         <small>המשחק עצור. השמירה נשמרת בדפדפן ובמכשיר הזה.</small>
+      </div>
+    </div>
+    <div class="ovl" id="exitAsk" hidden>
+      <div class="card">
+        <h2>סיימתי לשחק?</h2>
+        <small>ההתקדמות נשמרת לפני היציאה.</small>
+        <div class="row"><button type="button" id="exitYes" class="primary">כן</button><button type="button" id="exitNo">לא</button></div>
       </div>
     </div>
     <div class="ovl light" id="ctlPanel" hidden>
@@ -1465,6 +1473,7 @@ document.getElementById('pauseMenu').addEventListener('click', e => {
   else if (p === 'settings') openCtl();
   else if (p === 'savequit') { writeSave(safeSpot()); toTitle(); }
   else if (p === 'menu') toTitle();
+  else if (p === 'exit') askExit();
 });
 document.getElementById('tutOk').addEventListener('click', () => { document.getElementById('touchTut').hidden = true; S.touchTut = 1; saveS(); });
 function maybeTutorial(){
@@ -3510,6 +3519,41 @@ window.addEventListener('keydown', e => {                       // desktop short
   const n = '123456'.indexOf(e.key); if (n >= 0) { const w = WEAP[n]; if (w && weapOk(w)) setWeap(G.player, w.id); }
   if (e.code === 'KeyB' && !document.getElementById('btnShop').hidden) openShop();
 });
+// ---------- exit: never by accident ----------
+const CAP = window.Capacitor && window.Capacitor.Plugins ? window.Capacitor.Plugins : null;
+function askExit(){
+  if (G.scene === 'play' || G.scene === 'continue') pauseGame();
+  document.getElementById('pauseMenu').hidden = true;
+  document.getElementById('exitAsk').hidden = false;
+  setTimeout(() => document.getElementById('exitNo').focus(), 30);
+}
+function exitNo(){
+  document.getElementById('exitAsk').hidden = true;
+  if (G.scene === 'pause') document.getElementById('pauseMenu').hidden = false;
+}
+function exitYes(){
+  document.getElementById('exitAsk').hidden = true;
+  if (G.scene === 'pause' && G.pausedFrom === 'play') writeSave(safeSpot());
+  if (CAP && CAP.App && CAP.App.exitApp) { CAP.App.exitApp(); return; }
+  toTitle();                                                  // in a browser tab: back to the main menu
+}
+// Android back button / browser back: pause first, then ask; it never closes the game on its own
+function onBack(){
+  if (!document.getElementById('exitAsk').hidden) { exitNo(); return; }
+  if (CTL.open) { closeCtl(false); return; }
+  if (!document.getElementById('wsel').hidden) { closeWsel(); return; }
+  if (!document.getElementById('shop').hidden) { document.getElementById('shop').hidden = true; resumeGame(); return; }
+  if (G.scene === 'play' || G.scene === 'continue') { pauseGame(); return; }
+  if (G.scene === 'select') { toTitle(); return; }
+  askExit();
+}
+if (CAP && CAP.App && CAP.App.addListener) CAP.App.addListener('backButton', () => onBack());
+else {
+  try { history.pushState({ ninja: 1 }, ''); } catch (e) {}
+  window.addEventListener('popstate', () => { try { history.pushState({ ninja: 1 }, ''); } catch (e) {} onBack(); });
+}
+document.getElementById('exitYes').addEventListener('click', exitYes);
+document.getElementById('exitNo').addEventListener('click', exitNo);
 function pauseGame(){
   if (G.scene !== 'play' && G.scene !== 'continue') return;
   G.pausedFrom = G.scene; G.scene = 'pause';
@@ -3528,6 +3572,7 @@ function resumeGame(){
   G.contAcc = Math.min(G.contAcc, 0.5);
 }
 function toTitle(){
+  document.getElementById('exitAsk').hidden = true;
   ['wsel', 'shop', 'storyBox'].forEach(id => document.getElementById(id).hidden = true); document.getElementById('btnShop').hidden = true;
   document.getElementById('pauseMenu').hidden = true; closeCtl(false); stopCount(); G.runId++; G.scene = 'title'; G.menuIdx = 0; G.save = loadSave(); MUS.on = false; }
 function menuStep(){
@@ -4114,7 +4159,7 @@ document.getElementById('btnFull').addEventListener('click', () => {
 // leaving the tab or the app pauses the game and drops held keys
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.scene === 'play') { G.scene = 'pause'; MUS.on = false; } });
 
-window.__yoru = { G: G, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
+window.__yoru = { G: G, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
 loadSprites().then(() => { try { if (window.THREE) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
 })();
 </script>
