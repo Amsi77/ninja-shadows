@@ -451,6 +451,8 @@ function heroRecipe(shoot, bowPose, bowOverlay){
     hurt:   [0, [F('idle', 99, { rot: -15, dx: -3 })]],
     down:   [0, [F('idle', 99, { rot: -84, dy: -5 })]],
     roll:   [1, [F('pk:lowroll', 4), F('pk:lowroll', 4, { dy: -1, dx: 1 })]],
+    airthrow:[0, [F(shoot, 99, { rot: -8, dy: -2 })]],
+    airbow: [0, [F(bowPose, 99, { rot: -6, dy: -2, bow: bowOverlay })]],
     gapjump:[0, [F('pk:gapjump', 99)]],
     walljump:[0, [F('pk:walljump', 99)]],
     cling:  [0, [F('pk:cling', 99, { dx: 3 })]],
@@ -1211,6 +1213,45 @@ function cycleWeap(p){
   const list = WEAP.filter(weapOk), i = list.findIndex(w => w.id === (p.wid || 'star'));
   setWeap(p, list[(i + 1) % list.length].id);
 }
+// spawn a player projectile from (x, y) toward the unit direction (ax, ay)
+function spawnShot(p, sk, x, y, ax, ay){
+  const c = p.c, arrow = sk === 'arrow' || sk === 'fire' || sk === 'ice';
+  if (arrow) {
+    const v = 7.6;
+    G.shots.push({ kind: 'arrow', fire: sk === 'fire' ? 1 : 0, ice: sk === 'ice' ? 1 : 0, x: x, y: y, vx: ax * v, vy: ay * v, dmg: (sk === 'fire' ? 18 : 22) * c.dmg, from: 'p', pierce: 2, life: 120, hit: [] });
+    SFX.bow(); if (sk === 'fire') SFX.fire(); if (sk === 'ice') SFX.ice();
+  } else {
+    SFX.star();
+    if (sk === 'boomer') { G.shots.push({ kind: 'star', boom: 1, out: 1, owner: p, x: x, y: y, vx: ax * 6.2, vy: ay * 6.2 * 0.6, dmg: 8 * c.dmg, from: 'p', spin: 0, life: 220, hitO: [], hitB: [] }); SFX.boomer(); }
+    else if (sk === 'bolt') { G.shots.push({ kind: 'star', bolt: 1, x: x, y: y, vx: ax * 6, vy: ay * 6, dmg: 10 * c.dmg, from: 'p', spin: 0, life: 120 }); SFX.bolt(); }
+    else G.shots.push({ kind: 'star', x: x, y: y, vx: ax * 5, vy: ay * 5, dmg: 9 * c.dmg, from: 'p', spin: 0, life: 120 });
+  }
+}
+// shooting in the air (jump, fall, wall jump) or mid-roll: the body keeps its path, the hand opens briefly to release
+function tryShootAir(p, HELD, dirIn){
+  if (p.shootCd > 0) return false;
+  let w = curWeap(p);
+  if (w.cost && (p.en || 0) < w.cost) {
+    pop(p.x, p.y - 64, 'אין אנרגיה · ' + (w.fam === 'arrow' ? 'חץ רגיל' : 'כוכב רגיל'), '#ffb07a');
+    w = WEAP.find(x => x.id === (w.fam === 'arrow' ? 'arrow' : 'star'));
+  }
+  const arrow = w.fam === 'arrow', ammo = arrow ? 'ammoArrow' : 'ammoStar';
+  if (!w.cost && p[ammo] <= 0) { SFX.empty(); pop(p.x, p.y - 58, 'אין תחמושת', '#ff8a8a'); p.shootCd = 12; return false; }
+  // aim: facing by default; the stick adds a diagonal (up/down with or without a side)
+  const ay = HELD.up ? -1 : (HELD.down ? 1 : 0);
+  let ax = dirIn || p.face;
+  const n = Math.hypot(ax, ay); const nx = ax / n, ny = ay / n;
+  p.face = nx >= 0 ? 1 : -1;
+  // the shot leaves the hand / bow, not the body centre
+  const hx = p.x + p.face * (arrow ? 15 : 13) + nx * 3, hy = p.y - (arrow ? 44 : 40) + ny * 6;
+  if (solidHit({ x: hx - 2, y: hy - 2, w: 4, h: 4 }) || losBlocked(p.x, hy, hx)) return false;     // never through a wall
+  if (w.cost) p.en -= w.cost; else p[ammo]--;
+  const spdK = 1 - 0.12 * upL('spd');
+  p.shootCd = Math.round((arrow ? 30 : (w.cost ? 20 : 18)) * spdK);
+  spawnShot(p, w.id, hx, hy, nx, ny);
+  p.airShotT = 14; p.airShotArrow = arrow; p.aimY = ny;
+  return true;
+}
 function setObj(text, done){
   if (G.obj === text) return;
   G.obj = text; G.objT = 150;
@@ -1603,6 +1644,7 @@ function playerLogic(p){
   if (p.inv > 0) p.inv--;
   if (p.flashT > 0) p.flashT--;
   if (p.shootCd > 0) p.shootCd--;
+  if (p.airShotT > 0) p.airShotT--;
   const grounded = p.y >= p.gy;
 
   if (p.state === 'hurt' || p.state === 'down') {
@@ -1613,6 +1655,8 @@ function playerLogic(p){
     return;
   }
   if (p.state === 'roll') {
+    if (PRESSED.shoot && tryShootAir(p, HELD, p.vx >= 0 ? 1 : -1)) setAnim(p, p.airShotArrow ? 'airbow' : 'airthrow', true);
+    if (p.airShotT === 1) setAnim(p, 'roll', true);            // finish the release, then keep tumbling
     p.rollT--; p.x += p.vx; p.vx *= 0.96;
     p.inv = Math.max(p.inv, 2);
     if (p.rollT <= 0) {
@@ -1635,16 +1679,8 @@ function playerLogic(p){
     if (m.shoot) {
       if (p.mf === su) {
         const sk = p.shotKind || (m.shoot === 'star' ? 'star' : 'arrow');
-        if (m.shoot === 'star') {
-          SFX.star();
-          if (sk === 'boomer') { G.shots.push({ kind: 'star', boom: 1, out: 1, owner: p, x: p.x + p.face * 18, y: p.y - 40, vx: p.face * 6.2, vy: 0, dmg: 8 * c.dmg, from: 'p', spin: 0, life: 220, hitO: [], hitB: [] }); SFX.boomer(); }
-          else if (sk === 'bolt') { G.shots.push({ kind: 'star', bolt: 1, x: p.x + p.face * 18, y: p.y - 40, vx: p.face * 6, vy: 0, dmg: 10 * c.dmg, from: 'p', spin: 0, life: 120 }); SFX.bolt(); }
-          else G.shots.push({ kind: 'star', x: p.x + p.face * 18, y: p.y - 40, vx: p.face * 5, vy: 0, dmg: 9 * c.dmg, from: 'p', spin: 0, life: 120 });
-        } else {
-          SFX.bow(); setAnim(p, 'bowrel', true);
-          G.shots.push({ kind: 'arrow', fire: sk === 'fire' ? 1 : 0, ice: sk === 'ice' ? 1 : 0, x: p.x + p.face * 20, y: p.y - 46, vx: p.face * 7.6, vy: 0, dmg: (sk === 'fire' ? 18 : 22) * c.dmg, from: 'p', pierce: 2, life: 120, hit: [] });
-          if (sk === 'fire') SFX.fire(); if (sk === 'ice') SFX.ice();
-        }
+        if (m.shoot === 'star') spawnShot(p, sk, p.x + p.face * 18, p.y - 40, p.face, 0);
+        else { setAnim(p, 'bowrel', true); spawnShot(p, sk, p.x + p.face * 20, p.y - 46, p.face, 0); }
       }
       if (p.mf >= su + (m.shoot === 'star' ? c.starRec : m.rec)) { p.state = 'idle'; setAnim(p, 'idle', true); }
       return;
@@ -1713,10 +1749,12 @@ function playerLogic(p){
   }
   // airborne
   if (PRESSED.kick && !p.airAttacked) { p.airAttacked = true; startMove(p, 'airkick'); return; }
+  if (PRESSED.shoot) tryShootAir(p, HELD, dirIn);
   p.vy += GRAV; p.y += p.vy;
   if (dirIn !== 0 && !(p.lockT > 0)) { p.face = dirIn; p.vx = dirIn * c.speed * AIR_K; }
   p.x += p.vx;
-  setAnim(p, p.lockT > 0 ? 'walljump' : (Math.abs(p.vx) > 2.2 ? 'gapjump' : (p.vy < 0 ? 'jump' : 'fall')));
+  if (p.airShotT > 0) setAnim(p, p.airShotArrow ? 'airbow' : 'airthrow');
+  else setAnim(p, p.lockT > 0 ? 'walljump' : (Math.abs(p.vx) > 2.2 ? 'gapjump' : (p.vy < 0 ? 'jump' : 'fall')));
   if (p.y >= p.gy) { p.y = p.gy; p.vy = 0; p.state = 'idle'; setAnim(p, 'idle', true); landDust(p); }
 }
 function playerStep(p){
@@ -2167,7 +2205,7 @@ function shotsStep(){
     const px = s.x;
     if (s.boom) {                                              // returning star: out, slow, turn, home back to the thrower
       const o = s.owner;
-      if (s.out) { s.vx *= 0.965; if (Math.abs(s.vx) < 1.3) s.out = 0; }
+      if (s.out) { s.vx *= 0.965; s.vy *= 0.94; if (Math.abs(s.vx) < 1.3) s.out = 0; }
       else if (o && o.alive) { const dx = o.x - s.x, dy = o.y - 40 - s.y, d = Math.hypot(dx, dy) || 1; s.vx += (dx / d * 7 - s.vx) * 0.18; s.vy = (dy / d) * 4; if (d < 14) { G.shots.splice(i, 1); continue; } }
       else s.life = Math.min(s.life, 10);
     }
@@ -2566,6 +2604,14 @@ function drawEntities(){
       cx.fillStyle = 'rgba(210,225,255,.3)'; cx.fillRect(x - d * 11, y - 0.7, 9, 1.4);
       if (s.boom || s.bolt) { cx.save(); cx.globalCompositeOperation = 'lighter'; cx.fillStyle = s.bolt ? 'rgba(160,200,255,.45)' : 'rgba(255,220,140,.35)'; cx.beginPath(); cx.arc(x, y, 8, 0, 7); cx.fill(); cx.restore(); }
       drawStar(x, y, s.spin, s.boom ? 6 : 5, s.from === 'p' ? (s.bolt ? '#bfe0ff' : (s.boom ? '#ffe7a8' : '#dce6f6')) : '#ffb4b4');
+    } else if (s.kind === 'arrow' && s.vy) {                // an aimed (diagonal) arrow: same drawing, rotated to its path
+      cx.save(); cx.translate(x, y); cx.rotate(Math.atan2(s.vy, s.vx));
+      cx.fillStyle = 'rgba(255,255,255,.25)'; cx.fillRect(-18, -0.4, 12, 0.8);
+      cx.fillStyle = '#8a5a30'; cx.fillRect(-8, -0.7, 16, 1.4);
+      cx.fillStyle = '#e8eef8'; cx.beginPath(); cx.moveTo(11, 0); cx.lineTo(7, -2); cx.lineTo(7, 2); cx.fill();
+      cx.fillStyle = '#f0e8d0'; cx.fillRect(-9.5, -2, 3, 4);
+      if (s.fire || s.ice) { cx.globalCompositeOperation = 'lighter'; cx.fillStyle = s.fire ? 'rgba(255,140,50,.7)' : 'rgba(150,220,255,.7)'; cx.beginPath(); cx.arc(9, 0, 3.5, 0, 7); cx.fill(); }
+      cx.restore();
     } else if (s.kind === 'arrow') {
       cx.fillStyle = 'rgba(255,255,255,.25)'; cx.fillRect(x - d * 18, y - 0.4, 12, 0.8);
       cx.fillStyle = '#8a5a30'; cx.fillRect(x - 8, y - 0.7, 16, 1.4);
@@ -3986,6 +4032,8 @@ const R3 = (function(){
         if (af === 0) { A.thR = -0.6; A.shR = 1.6; A.spine = -0.1; }
         else { A.thR = -1.65; A.shR = 0.08; A.thL = 0.15; A.shL = 0.3; A.spine = -0.3; A.saL = 0.4; A.saR = -0.6; A.elL = -1.2; }
         break;
+      case 'airthrow': A.thL = -1.1; A.shL = 1.6; A.thR = 0.3; A.shR = 0.8; A.saR = -1.5; A.elR = -0.1; A.saL = 0.6; A.elL = -0.8; A.spine = 0.1; rate = 26; brow = 1; break;
+      case 'airbow': A.thL = -1.0; A.shL = 1.5; A.thR = 0.35; A.shR = 0.9; A.saL = -1.55; A.elL = -0.05; A.saR = -1.4; A.elR = -2.0; A.spineY = 0.3; rate = 24; brow = 1; break;
       case 'airkick': A.thR = -1.5; A.shR = 0.1; A.thL = -0.6; A.shL = 1.8; A.spine = -0.35; A.saL = 0.6; A.saR = -0.9; A.elL = -1; rate = 26; brow = 1; break;
       case 'throw': case 'throwS': stance(); rate = 24; brow = 1;
         if (af === 0) { A.saR = 2.4; A.elR = -1.2; A.spineY = 0.4; A.spine = -0.1; }
@@ -4159,7 +4207,7 @@ document.getElementById('btnFull').addEventListener('click', () => {
 // leaving the tab or the app pauses the game and drops held keys
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.scene === 'play') { G.scene = 'pause'; MUS.on = false; } });
 
-window.__yoru = { G: G, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
+window.__yoru = { G: G, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
 loadSprites().then(() => { try { if (window.THREE) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
 })();
 </script>
