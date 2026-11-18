@@ -2383,7 +2383,7 @@ function killPlayer(p){
     if (G.lives > 0) {
       p.alive = true; p.out = false; p.hp = p.hpMax; p.inv = 120; p.state = 'idle'; p.stun = 0;
       const mate = livePlayers().find(q => q !== p);
-      const rp = mate ? { x: mate.x, y: mate.y } : respawnPoint(); p.x = rp.x; p.y = rp.y; p.vx = 0; p.vy = 0;
+      const rp = safeRespawn(mate ? { x: mate.x, y: mate.y } : respawnPoint()); p.x = rp.x; p.y = rp.y; p.gy = rp.y; p.vx = 0; p.vy = 0;
       setAnim(p, 'idle', true);
       big(G.two ? (p.idx ? '2P קום!' : '1P קום!') : 'קום!', 60);
     } else if (livePlayers().length) {
@@ -4285,6 +4285,22 @@ function loadStage(i){
   ST.lanterns.forEach((l, k) => { if (lt.indexOf(k) >= 0) { l.lit = true; G.check = { x: l.x, y: l.y }; } });
   big(ST.name, 100);
 }
+// a respawn spot that is always standable: inside the current view (arenas lock the camera) and on a real floor,
+// never inside a wall or the ground. Picks the floor at that x closest to the wanted height.
+function safeRespawn(rp){
+  const lock = !!(G.locked || G.boss || G.amb), lo = lock ? G.cam + 20 : rp.x - 240, hi = lock ? G.cam + VW - 20 : rp.x + 240;   // a locked arena keeps you in view
+  let x = Math.max(lo + 10, Math.min(hi - 10, rp.x));
+  const standable = (x, y) => !solidHit({ x: x - 6, y: y - 42, w: 12, h: 40 });
+  const tops = xx => { const t = []; for (const sl of ST.solids) if (!sl.open && xx >= sl.x + 4 && xx <= sl.x + sl.w - 4) t.push(sl.y); for (const q of ST.plats) if (xx >= q.x + 4 && xx <= q.x + q.w - 4) t.push(q.y); return t; };
+  for (let k = 0; k < 40; k++) {                                     // search outward from the wanted x for a clear floor
+    for (const xx of k ? [x + k * 12, x - k * 12] : [x]) {
+      if (xx < lo || xx > hi) continue;
+      const c = tops(xx).filter(y => standable(xx, y)).sort((a, b) => Math.abs(a - rp.y) - Math.abs(b - rp.y));
+      if (c.length) return { x: xx, y: c[0] };
+    }
+  }
+  return rp;
+}
 function respawnPoint(){
   return ST.encounters ? { x: G.cam + VW * 0.3, y: GROUND } : G.check;
 }
@@ -4412,8 +4428,8 @@ function fallOut(p){
   p.hp -= 22;
   SFX.hurt(); trauma(0.5);
   if (p.hp <= 0) { p.y = VH + 40; killPlayer(p); return; }
-  const r = respawnPoint();
-  p.x = r.x; p.y = r.y; p.vx = 0; p.vy = 0; p.inv = 90; p.state = 'idle';
+  const r = safeRespawn(respawnPoint());
+  p.x = r.x; p.y = r.y; p.gy = r.y; p.vx = 0; p.vy = 0; p.inv = 90; p.state = 'idle';
   setAnim(p, 'idle', true);
   pop(p.x, p.y - 60, 'נפילה -22', '#ff8a8a');
 }
@@ -5111,7 +5127,7 @@ function stopCount(){ if (MUS.cd) { try { MUS.cd.stop(); } catch (e) {} MUS.cd =
 function doContinue(){
   stopCount();
   G.lives = DIFF[G.diff].lives;
-  const rp = respawnPoint();
+  const rp = safeRespawn(respawnPoint());
   for (const p of G.players) {
     p.alive = true; p.out = false; p.hp = p.hpMax; p.inv = 150; p.stun = 0; p.vx = 0; p.vy = 0;
     p.x = rp.x - p.idx * 18; p.y = rp.y; p.gy = rp.y; p.state = 'idle'; setAnim(p, 'idle', true);
