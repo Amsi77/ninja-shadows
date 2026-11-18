@@ -4820,7 +4820,11 @@ function worldStep(){
     f.y = sp.y; f.gy = sp.y;
     G.foes.push(f);
   }
-  if (!G.boss && ST.bossX && !G.amb && (!ST.bossAfter || cityData().a.indexOf(ST.bossAfter) >= 0) && livePlayers().some(p => p.x > ST.bossX)) {      // the courtyard seals and the boss walks in
+  if (ST.city && !G.boss && ST.bossX && livePlayers().some(p => p.x > ST.bossX - 40) && !((cityData().missions || {}).towerSignal)) {   // the boss waits for the signal mission
+    if (!(G.sigHintT > 0)) { say('קודם השבת את משדר האות שבכניסה לכיכר (ואת הסוחר בשוק)', 150); G.sigHintT = 400; }
+  }
+  if (G.sigHintT > 0) G.sigHintT--;
+  if (!G.boss && ST.bossX && !G.amb && (!ST.bossAfter || cityData().a.indexOf(ST.bossAfter) >= 0) && (!ST.city || (cityData().missions || {}).towerSignal) && livePlayers().some(p => p.x > ST.bossX)) {      // the courtyard seals and the boss walks in
     G.locked = true; G.camMin = ST.w - VW;
     G.boss = makeBoss(); G.boss.gy = G.boss.y;
     G.bossIntro = 130;
