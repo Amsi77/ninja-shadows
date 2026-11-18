@@ -1617,9 +1617,9 @@ function eliteRoll(f){                                    // about one foe in ei
 }
 function makeBoss(){
   const d = DIFF[G.diff];
-  const hp = Math.round(({ warden: 300, shadow: 280, raven: 300, emperor: 440 }[ST.bossKey] || 340) * d.hpK * (G.two ? 1.5 : 1));
+  const hp = Math.round(({ warden: 300, shadow: 280, raven: 300, emperor: 440, breaker: 300 }[ST.bossKey] || 340) * d.hpK * (G.two ? 1.5 : 1));
   return {
-    kind: 'boss', key: ST.bossKey || 'boss', sc: ({ raven: 1.22, emperor: 1.18 }[ST.bossKey] || 1), x: ST.w + 40, y: ST.bossY || ST.solids[ST.solids.length - 3].y, vx: 0, vy: 0, face: -1,
+    kind: 'boss', key: ST.bossKey || 'boss', sc: ({ raven: 1.22, emperor: 1.18, breaker: 1.4 }[ST.bossKey] || 1), x: ST.w + 40, y: ST.bossY || ST.solids[ST.solids.length - 3].y, vx: 0, vy: 0, face: -1,
     hp: hp, hpMax: hp, dmg: 16 * d.dmgK,
     an: 'idle', af: 0, at: 0, state: 'idle', stun: 0,
     cd: 70, mf: 0, attack: null, hitDone: false, lastAttack: null,
@@ -1919,6 +1919,7 @@ function hurtBox0(e){
   if (e.kind === 'shield' && e.key === 'sguard') return { x: e.x - 13, y: e.y - 52, w: 26, h: 52 };
   if (e.kind === 'drummer') return { x: e.x - 14, y: e.y - 52, w: 28, h: 52 };
   if (e.kind === 'pulse') return e.an === 'sweep' || e.an === 'sweeprec' || e.an === 'stagger' ? { x: e.x - 12, y: e.y - 42, w: 24, h: 42 } : { x: e.x - 10, y: e.y - 56, w: 20, h: 56 };
+  if (e.key === 'breaker' && e.kind === 'boss') return { x: e.x - 15, y: e.y - 64, w: 30, h: 64 };
   if (e.key === 'raven') return e.attack === 'reload' && e.state === 'attack' ? { x: e.x - 16, y: e.y - 60, w: 32, h: 60 } : { x: e.x - 13, y: e.y - 74, w: 26, h: 74 };
   if (e.key === 'emperor') return e.attack === 'kneel' && e.state === 'attack' ? { x: e.x - 20, y: e.y - 58, w: 40, h: 58 } : { x: e.x - 14, y: e.y - 80, w: 28, h: 80 };
   if (e.key === 'shadow') return e.state === 'attack' && e.attack === 'landing' ? { x: e.x - 24, y: e.y - 44, w: 48, h: 44 } : { x: e.x - 13, y: e.y - 76, w: 26, h: 76 };
@@ -2088,7 +2089,7 @@ function playerLogic(p){
     let bounced = false;
     if (p.mf > su && p.mf <= su + m.active) {
       const hb = faceBox(p, [m.box[0], m.box[1], m.box[2] * c.reach, m.box[3]]);
-      hitCrates(hb); hitCage(hb, p); hitBells(hb);
+      hitCrates(hb); hitCage(hb, p); hitBells(hb); if (ST.shortcut) hitLever(hb);
       const targets = G.boss && G.boss.alive ? G.foes.concat([G.boss]) : G.foes;
       for (const f of targets) {
         if (!f.alive || p.hitList.indexOf(f) >= 0) continue;
@@ -2188,6 +2189,7 @@ function playerLogic(p){
 }
 function playerStep(p){
   p.gy = groundAt(p.x, p.y);
+  if (p.alive && (p.state === 'run' || p.state === 'idle') && p.gy > p.y && p.gy - p.y <= 10) p.y = p.gy;   // down the steps
   if (!(p.alive && parkourPre(p))) {
     playerLogic(p);
     if (p.alive && p.state !== 'hang' && p.state !== 'pullup') { resolveWalls(p); parkourPost(p); }
@@ -2672,9 +2674,10 @@ function foeSpecial(f, p, dx, adx, d){
   return true;
 }
 function foeStep(f){
-  f.gy = groundAt(f.x, f.y);
+  f.gy = f.emerge && f.emerge.shadowY !== undefined ? f.emerge.shadowY : groundAt(f.x, f.y);
   if (f.y > VH + 80 && f.alive) { f.alive = false; f.deadT = 1; return; }
   if (f.emerge && f.alive) { if (f.flashT > 0) f.flashT--; stepAnim(f); emergeStep(f); return; }
+  if (f.y > f.gy + 40 && f.alive && f.gy < 9000) { }
   const d = DIFF[G.diff];
   if (f.flashT > 0) f.flashT--;
   stepAnim(f);
@@ -2797,6 +2800,7 @@ function bossStep(b){
   if (b.key === 'warden') { wardenStep(b, p, dx, adx, k); return; }
   if (b.key === 'shadow') { shadowStep(b, p, dx, adx, k); return; }
   if (b.key === 'raven') { ravenStep(b, p, dx, adx, k); return; }
+  if (b.key === 'breaker') { breakerBossStep(b, p, dx, adx, k); return; }
   if (b.key === 'emperor') { emperorStep(b, p, dx, adx, k); return; }
 
   if (b.state === 'attack') {
@@ -3080,6 +3084,46 @@ function emperorStep(b, p, dx, adx, k){
     if (b.attack !== 'spin') b.spun = false;
   }
 }
+// ---- Ground Breaker (boss): hammer smash up close, a quake that sends shockwaves both ways, and a leaping slam.
+// Each one ends with the hammer stuck in the stones: exposed. Below half health the quake sends two waves.
+function breakerBossStep(b, p, dx, adx, k){
+  const half = b.hp < b.hpMax * 0.5;
+  const waves = (n) => { for (let i = 0; i < n; i++) for (const dir of [1, -1]) G.shots.push({ kind: 'wave', x: b.x + dir * 34, y: b.gy, vx: dir * (3.2 + i * 0.9), dmg: b.dmg * 0.7, from: 'e', life: 110 }); };
+  if (b.state === 'attack') {
+    b.mf++;
+    const T = Math.round((b.attack === 'smash' ? 26 : 34) * k);
+    if (b.attack === 'smash' || b.attack === 'quake') {
+      if (b.mf < T) setAnim(b, 'raise');
+      if (b.mf === T) {
+        setAnim(b, 'slam', true); SFX.heavy(); trauma(0.6); burst(b.x + b.face * 30, b.gy, 16, '#ffb35a', 2.8, 0.8);
+        if (b.attack === 'smash') { const fb = faceBox(b, [-6, -56, 46, 56]); for (const q of livePlayers()) if (overlap(fb, hurtBox(q))) hurtPlayer(q, b.dmg, b.x, true); waves(1); }
+        else waves(half ? 2 : 1);
+      }
+      if (b.mf === T + 14) { setAnim(b, 'recover', true); b.exposed = true; pop(b.x, b.y - 90, 'הפטיש תקוע — חשוף!', '#ffe27a'); }
+      if (b.mf >= T + 14 + Math.round(55 / DIFF[G.diff].tellK)) { b.exposed = false; endBossAttack(b); }
+    } else if (b.attack === 'leap') {
+      if (b.mf < 16) setAnim(b, 'recover');
+      if (b.mf === 16) { b.vy = -8.4; b.vx = Math.max(-5, Math.min(5, (p.x - b.x) / 34)); b.y -= 1; setAnim(b, 'raise', true); SFX.jumpBoss && SFX.jumpBoss(); }
+      if (b.mf > 16 && !b.landed) {
+        b.vy += GRAV * 0.9; b.y += b.vy; b.x += b.vx; b.x = Math.max(G.cam + 24, Math.min(G.cam + VW - 24, b.x));
+        if (b.vy > 0 && b.y >= b.gy) { b.y = b.gy; b.landed = true; b.mf = 100; setAnim(b, 'slam', true); SFX.heavy(); trauma(0.7); waves(1);
+          const fb = { x: b.x - 30, y: b.y - 40, w: 60, h: 40 }; for (const q of livePlayers()) if (overlap(fb, hurtBox(q))) hurtPlayer(q, b.dmg, b.x, true); }
+      }
+      if (b.landed && b.mf === 112) { setAnim(b, 'recover', true); b.exposed = true; pop(b.x, b.y - 90, 'חשוף!', '#ffe27a'); }
+      if (b.landed && b.mf >= 112 + Math.round(70 / DIFF[G.diff].tellK)) { b.exposed = false; b.landed = false; endBossAttack(b); }
+    }
+    return;
+  }
+  b.face = dx >= 0 ? 1 : -1;
+  if (adx > 70) { b.x += b.face * 0.7; setAnim(b, 'run'); } else setAnim(b, 'idle');
+  b.cd--;
+  if (b.cd <= 0 && p.alive) {
+    b.state = 'attack'; b.mf = 0; b.landed = false;
+    if (adx < 60) { b.attack = 'smash'; say('הפטיש עולה — התרחק!', 50); }
+    else if (Math.random() < 0.5) { b.attack = 'quake'; say('רעידת אדמה — קפוץ מעל הגל!', 60); }
+    else { b.attack = 'leap'; say('שובר הקרקע מזנק אליך!', 60); }
+  }
+}
 function emperorKneel(b){ b.attack = 'kneel'; b.mf = 0; b.exposed = true; setAnim(b, 'kneel', true); pop(b.x, b.y - 70, 'חשוף!', '#ffe27a'); }
 function startLeap(b, p){
   b.state = 'attack'; b.attack = 'leap'; b.mf = 0; b.airShot = false;
@@ -3258,6 +3302,10 @@ function cameraStep(){
   const target = Math.max(G.camMin, Math.min(max, mid));
   G.cam += (target - G.cam) * 0.1;
   if (Math.abs(target - G.cam) < 0.6) G.cam = target;
+  if (ST.camY) {                                              // smooth vertical follow: no jolt on each step, a small dead zone
+    const py = ps[0].y, want = Math.min(0, py - 196), d = want - G.camY;
+    if (Math.abs(d) > 6) G.camY += (d - Math.sign(d) * 6) * 0.07;
+  } else G.camY = 0;
 }
 
 // ===================================================================
@@ -4008,41 +4056,60 @@ function buildParis3(){                       // Notre-Dame: alleys, roof-to-roo
 }
 function buildCity(){                         // the Old City (harbour to hilltop): phase 1 = dock, warehouse alley, market
   const F = 232, S = (x, y, w, h, o) => Object.assign({ x: x, y: y, w: w, h: h }, o || {});
-  return parisBase({ id: 0, name: 'העיר העתיקה', bg: 'city', w: 4100, city: true,
+  const steps = (x0, y0, n, run, rise) => { const a = []; for (let i = 0; i < n; i++) a.push(S(x0 + i * run, y0 - rise * (i + 1), run + 1, 232 - (y0 - rise * (i + 1)) + 40)); return a; };
+  return parisBase({ id: 0, name: 'העיר העתיקה', bg: 'city', w: 6600, city: true, camY: true,
+    bossX: 6020, bossY: 40, bossKey: 'breaker', bossAfter: 'tower',
     zones: [
       { id: 'dock',   name: 'רציף הדייגים', x0: 0,    x1: 1500, bg: 'city1' },
       { id: 'wh',     name: 'סמטת המחסנים', x0: 1500, x1: 2700, bg: 'city2' },
-      { id: 'market', name: 'רחוב השוק',    x0: 2700, x1: 4100, bg: 'city3' }
+      { id: 'market', name: 'רחוב השוק',    x0: 2700, x1: 4120, bg: 'city3' },
+      { id: 'roofs',  name: 'סמטת הגגות',   x0: 4040, x1: 5420, yMax: -20, bg: 'city5' },
+      { id: 'hill',   name: 'מעלות הגבעה',  x0: 4120, x1: 5300, bg: 'city4' },
+      { id: 'tower',  name: 'כיכר המגדל',   x0: 5300, x1: 6600, bg: 'city6' }
     ],
     solids: [
-      S(-300, F, 4500, 70),
+      S(-300, F, 4800, 70),
       S(1820, F - 34, 44, 34),                                   // a stack of crates in the alley (jump it)
-      S(3610, F - 22, 60, 22)                                    // the cafe terrace step
+      S(3610, F - 22, 60, 22),                                   // the cafe terrace step
+      ...steps(4300, 232, 12, 16, 8),                            // Hill Steps, first flight: 232 -> 136
+      S(4492, 136, 300, 136),                                    // the stair landing
+      ...steps(4792, 136, 12, 16, 8),                            // second flight: 136 -> 40
+      S(4984, 40, 1700, 232)                                     // the hilltop street and the Tower Square
     ],
     plats: [                                                     // the upper route: dock stairs -> arcade roof -> warehouse roofs -> drop into the market
       { x: 1040, y: 204, w: 40, stair: 1 }, { x: 1080, y: 182, w: 40, stair: 1 }, { x: 1120, y: 160, w: 40, stair: 1 },
       { x: 1160, y: 150, w: 400, roof: 1 }, { x: 1600, y: 140, w: 460, roof: 1 }, { x: 2110, y: 146, w: 520, roof: 1 },
-      { x: 3070, y: 178, w: 110, awning: 1 }, { x: 3400, y: 178, w: 110, awning: 1 }
+      { x: 3070, y: 178, w: 110, awning: 1 }, { x: 3400, y: 178, w: 110, awning: 1 },
+      { x: 4060, y: -60, w: 480, roof2: 1 }, { x: 4540, y: -60, w: 500, roof2: 1 }, { x: 5040, y: -60, w: 380, roof2: 1 }   // the Rooftop Alley
     ],
-    climbs: [{ x: 1580, top: 140, bot: F, edge: 1580, dir: 1 }],
+    climbs: [{ x: 1580, top: 140, bot: F, edge: 1580, dir: 1 }, { x: 4740, top: -60, bot: 136, edge: 4740, dir: 1 }],
+    shortcut: { x: 4076, top: -60, bot: F, lever: { x: 4110, y: -60 } },   // a ladder from the market to the roofs, unbolted from above
     crates: [{ x: 420, y: F }, { x: 560, y: F }, { x: 1700, y: F }, { x: 2400, y: F }, { x: 3780, y: F }],
-    lanterns: [{ x: 40, y: F }, { x: 1530, y: F }, { x: 2730, y: F }, { x: 3600, y: F - 22 }],
-    items: [{ kind: 'star', x: 1360, y: 136 }, { kind: 'hp', x: 2300, y: 132 }, { kind: 'en', x: 3125, y: 164 }],
+    lanterns: [{ x: 40, y: F }, { x: 1530, y: F }, { x: 2730, y: F }, { x: 3600, y: F - 22 }, { x: 4520, y: 136 }, { x: 5340, y: 40 }],
+    items: [{ kind: 'star', x: 1360, y: 136 }, { kind: 'hp', x: 2300, y: 132 }, { kind: 'en', x: 3125, y: 164 }, { kind: 'hp', x: 4760, y: 120 }, { kind: 'en', x: 4900, y: -84 }, { kind: 'hp', x: 5600, y: 26 }],
     spawns: [{ t: 'grunt', x: 640, y: F }, { t: 'thrower', x: 1420, y: 150 }, { t: 'viper', x: 1980, y: F }, { t: 'archer', x: 2420, y: 146 },
-      { t: 'brute', x: 3560, y: F }, { t: 'agile', x: 3900, y: F }],
+      { t: 'brute', x: 3560, y: F }, { t: 'agile', x: 3900, y: F },
+      { t: 'viper', x: 5160, y: 40 }, { t: 'archer', x: 4460, y: -60 }, { t: 'thrower', x: 5240, y: -60 }],
     hides: [                                                     // where the ambushers wait, drawn as part of the street
       { id: 'a1', type: 'arch', x: 880 }, { id: 'a2', type: 'arch', x: 990 },
       { id: 'd0', type: 'door', x: 1660, deco: 1 }, { id: 'd1', type: 'door', x: 2200 }, { id: 'd2', type: 'door', x: 2520, deco: 1 },
-      { id: 's1', type: 'stall', x: 3125 }, { id: 'al', type: 'alley', x: 3300 }, { id: 's2', type: 'stall', x: 3455, deco: 1 }
+      { id: 's1', type: 'stall', x: 3125 }, { id: 'al', type: 'alley', x: 3300 }, { id: 's2', type: 'stall', x: 3455, deco: 1 },
+      { id: 'bal', type: 'balcony', x: 4690, y: 136, top: 60 }, { id: 'wl', type: 'wall', x: 4560, y: 136 },
+      { id: 'rd', type: 'roofdrop', x: 4900, y: -60, top: -170 }, { id: 'rl', type: 'rail', x: 4820, y: -60 },
+      { id: 't1', type: 'arch', x: 5520, y: 40 }, { id: 't2', type: 'alley', x: 5720, y: 40 }, { id: 't3', type: 'door', x: 5900, y: 40 }, { id: 't4', type: 'roofdrop', x: 5800, y: 40, top: -90 }
     ],
     ambushes: [
       { id: 'dock', x: 760, hint: 'צללים זזים בתוך הקשתות…', sets: [[['grunt', 'a1'], ['agile', 'a2']], [['grunt', 'a2'], ['grunt', 'a1'], ['thrower', 'a2']]] },
       { id: 'door', x: 2040, hint: 'דלת המחסן רועדת!', sets: [[['grunt', 'd1'], ['viper', 'd1'], ['grunt', 'd1']], [['agile', 'd1'], ['grunt', 'd1']]] },
-      { id: 'market', x: 3010, hint: 'הווילון של הדוכן זז…', sets: [[['grunt', 's1'], ['agile', 'al'], ['grunt', 'al']], [['agile', 's1'], ['viper', 'al']]] }
+      { id: 'market', x: 3010, hint: 'הווילון של הדוכן זז…', sets: [[['grunt', 's1'], ['agile', 'al'], ['grunt', 'al']], [['agile', 's1'], ['viper', 'al']]] },
+      { id: 'hill', x: 4520, y: 136, hint: 'צל נופל על משטח המדרגות!', sets: [[['agile', 'bal'], ['grunt', 'wl'], ['grunt', 'bal']], [['grunt', 'bal'], ['viper', 'wl']]] },
+      { id: 'roofs', x: 4700, y: -60, hint: 'אבק נושר מהגג שמעליך…', sets: [[['agile', 'rd'], ['grunt', 'rl']], [['grunt', 'rd'], ['agile', 'rl'], ['thrower', 'rl']]] },
+      { id: 'tower', x: 5640, y: 40, hint: 'תגבורת מכל הכניסות!', chain: 1, sets: [[['grunt', 't1'], ['agile', 't3'], ['grunt', 't2']], [['viper', 't2'], ['grunt', 't4'], ['brute', 't3'], ['agile', 't1']]] }
     ],
     signs: [{ x: 70, y: 112, t: 'רציף הדייגים' }, { x: 1515, y: 104, t: 'סמטת המחסנים' }, { x: 2745, y: 108, t: 'רחוב השוק' },
-      { x: 1110, y: 118, t: '↗ לשוק דרך הגגות', small: 1 }, { x: 3955, y: 118, t: '↑ מעלות הגבעה', small: 1 }],
-    exitX: 4000,
+      { x: 1110, y: 118, t: '↗ לשוק דרך הגגות', small: 1 }, { x: 4200, y: 118, t: 'מעלות הגבעה', small: 0 },
+      { x: 4700, y: 30, t: '↑ סמטת הגגות', small: 1 }, { x: 4560, y: -150, t: 'סמטת הגגות' }, { x: 4180, y: -110, t: '↩ קיצור דרך לשוק', small: 1 },
+      { x: 5380, y: -40, t: 'כיכר המגדל' }],
     start: { x: 70, y: F } });
 }
 function buildParis4(){                       // Montmartre: steep stairs, a forked alley, a climb to the roofs, the final duel
@@ -4082,7 +4149,7 @@ function loadStage(i){
   G.stage = i;
   G.foes = []; G.shots = []; G.parts = []; G.pickups = []; G.pops = [];
   G.enc = 0; G.waveIdx = 0; G.waveDelay = 0; G.locked = false;
-  G.cam = 0; G.camMin = 0; G.boss = null; G.bossIntro = 0;
+  G.cam = 0; G.camMin = 0; G.boss = null; G.bossIntro = 0; G.camY = 0;
   MUS.boss = false;
   for (const p of G.players) {
     p.x = ST.start.x - p.idx * 22; p.y = ST.start.y; p.vx = 0; p.vy = 0; p.face = 1; p.gy = ST.start.y;
@@ -4100,6 +4167,7 @@ function loadStage(i){
   const qd = (G.story && G.story.q[i]) || {};
   (ST.npcs || []).forEach(n => { if (qd.freed) n.freed = true; });
   G.amb = null; G.zoneNow = null; G.zoneBanner = null;
+  if (ST.shortcut) shortcutInit();
   (ST.ambushes || []).forEach(a => { a.pick = (Math.random() * a.sets.length) | 0; a.done = G.story && G.story.city && G.story.city.a.indexOf(a.id) >= 0; });
   questInit();
   ST.lanterns.forEach((l, k) => { if (lt.indexOf(k) >= 0) { l.lit = true; G.check = { x: l.x, y: l.y }; } });
@@ -4380,19 +4448,20 @@ function cityData(){ const y = SY(); return y.city || (y.city = { v: [], a: [] }
 function cityStep(){
   if (!ST.city || G.scene !== 'play') return;
   const p = G.player; if (!p) return;
-  const cd = cityData(), z = zoneAt(p.x);
+  const cd = cityData(), z = zoneAt(p.x, p.y);
   if (z && z !== G.zoneNow) {                                       // entering a place: its name, and it goes on the map
     G.zoneNow = z; G.zoneBanner = { t: 150, name: z.name };
     if (cd.v.indexOf(z.id) < 0) { cd.v.push(z.id); writeSave(G.check); }
+    cityObj();
     SFX.ui && SFX.ui();
   }
   if (G.zoneBanner && G.zoneBanner.t > 0 && !(G.bigT > 0)) G.zoneBanner.t--;
   const A = G.amb;
   if (!A) {
     for (const a of ST.ambushes || []) {
-      if (a.done || cd.a.indexOf(a.id) >= 0 || p.x < a.x || p.x > a.x + 400 || p.y < 214) continue;   // street ambushes: only on the street, not from the roofs
-      const set = a.sets[a.pick];
-      G.amb = { a: a, set: set, hides: set.map(e => e[1]), state: 'tell', t: 0, i: 0, foes: [], cam: G.cam, camMin: G.camMin };
+      if (a.done || cd.a.indexOf(a.id) >= 0 || p.x < a.x || p.x > a.x + 400 || Math.abs(p.y - (a.y === undefined ? 232 : a.y)) > 18) continue;   // only on the ambush's own level
+      const set = a.chain ? a.sets[0] : a.sets[a.pick];
+      G.amb = { a: a, set: set, wave: 0, hides: set.map(e => e[1]), state: 'tell', t: 0, i: 0, foes: [], cam: G.cam, camMin: G.camMin };
       G.camMin = G.cam; say(a.hint, 70);
       break;
     }
@@ -4406,7 +4475,8 @@ function cityStep(){
   if (A.state === 'tell') {                                         // the short warning: dust, a creaking door, a moving curtain, a shadow
     for (const id of A.hides) {
       const h = ST.hides.find(q => q.id === id);
-      if (A.t % 6 === 0) G.parts.push({ x: h.x + (Math.random() - 0.5) * 30, y: 232 - 80 - Math.random() * 6, vx: 0, vy: 0.6, life: 30, max: 30, col: 'rgba(210,190,150,.8)', g: 0.04, sz: 1.4 });
+      const hy = h.y === undefined ? 232 : h.y, top = h.top !== undefined ? h.top : hy - 80;
+      if (A.t % 6 === 0) G.parts.push({ x: h.x + (Math.random() - 0.5) * 30, y: top - Math.random() * 6, vx: 0, vy: 0.6, life: 30, max: 30, col: 'rgba(210,190,150,.8)', g: 0.04, sz: 1.4 });
       if (A.t % 14 === 1) { if (h.type === 'door') tone(140, 0.18, 'sawtooth', 0.05, 90); else SFX.step(false); }
     }
     if (A.t >= TELL) { A.state = 'spawn'; A.t = 0; }
@@ -4419,16 +4489,23 @@ function cityStep(){
       let x = h.x;
       if (Math.abs(p.x - x) < 40) x = p.x + (x >= p.x ? 1 : -1) * 52;                  // never on top of the player
       x = Math.max(G.cam + 16, Math.min(G.cam + VW - 16, x));
-      const f = makeFoe(kind, x); f.y = 232; f.gy = 232; f.face = p.x >= x ? 1 : -1; f.cd = 40 + Math.random() * 30;
-      f.emerge = { type: h.type === 'stall' ? 'hop' : 'run', t: 0, dir: f.face };
-      if (h.type === 'stall') { f.y = 232 - 24; }
+      const hy = h.y === undefined ? 232 : h.y;
+      const f = makeFoe(kind, x); f.y = hy; f.gy = hy; f.face = p.x >= x ? 1 : -1; f.cd = 40 + Math.random() * 30;
+      const ty = { stall: 'hop', wall: 'hop', rail: 'hop', balcony: 'drop', roofdrop: 'drop' }[h.type] || 'run';
+      f.emerge = { type: ty, t: 0, dir: f.face, land: 0 };
+      if (ty === 'hop') f.y = hy - 24;
+      if (ty === 'drop') { f.y = h.top; f.emerge.shadowY = hy; }
       G.foes.push(f); A.foes.push(f);
     }
     if (A.i >= A.set.length) A.state = 'fight';
     return;
   }
+  if (A.state === 'fight' && !A.foes.some(o => o.alive) && A.a.chain && A.wave + 1 < A.a.sets.length) {   // the next group comes in
+    A.wave++; A.set = A.a.sets[A.wave]; A.hides = A.set.map(e => e[1]); A.state = 'tell'; A.t = 0; A.i = 0; A.foes = [];
+    say('עוד מגיעים!', 60); return;
+  }
   if (A.state === 'fight' && !A.foes.some(o => o.alive)) {
-    A.a.done = true; cd.a.push(A.a.id); G.camMin = A.camMin; G.amb = null;
+    A.a.done = true; cd.a.push(A.a.id); G.camMin = A.camMin; G.amb = null; cityObj();
     addCoins(10); pop(p.x, p.y - 80, 'המארב נוטרל · +10 🪙', '#ffd24a'); SFX.go(); writeSave(G.check);
   }
 }
@@ -4437,6 +4514,11 @@ function emergeStep(f){                                    // stepping out of hi
   if (e.type === 'run') {
     f.face = e.dir; f.x += e.dir * 2.0; setAnim(f, 'run');
     if (e.t >= 22) { f.emerge = null; setAnim(f, 'idle', true); }
+  } else if (e.type === 'drop') {                         // dropping from a balcony or a roof: a shadow marks the landing
+    if (!e.land) {
+      f.vy += GRAV; f.y += f.vy; f.gy = e.shadowY; setAnim(f, 'fall');
+      if (f.y >= e.shadowY) { f.y = e.shadowY; f.vy = 0; e.land = 1; trauma(0.2); burst(f.x, f.y, 8, '#cdb89a', 1.8, 0.5); setAnim(f, 'crouch', true); }
+    } else if (++e.land > 14) { f.emerge = null; setAnim(f, 'idle', true); }
   } else {
     if (e.t === 1) { f.vy = -6.4; f.vx = e.dir * 1.6; }
     if (!e.land) {
@@ -4445,9 +4527,36 @@ function emergeStep(f){                                    // stepping out of hi
     } else if (++e.land > 12) { f.emerge = null; setAnim(f, 'idle', true); }
   }
 }
+function shortcutInit(){
+  const sc = ST.shortcut; if (!sc) return;
+  sc.open = !!cityData().sc;
+  if (sc.open && !ST.climbs.some(c => c.sc)) ST.climbs.push({ x: sc.x, top: sc.top, bot: sc.bot, edge: sc.x, dir: 1, sc: 1 });
+}
+function hitLever(hb){
+  const sc = ST.shortcut; if (!sc || sc.open) return;
+  const L = sc.lever; if (!overlap(hb, { x: L.x - 14, y: L.y - 70, w: 28, h: 70 })) return;
+  cityData().sc = 1; shortcutInit(); SFX.gate && SFX.gate(); trauma(0.3);
+  big('קיצור הדרך לשוק נפתח', 80); pop(L.x, L.y - 40, 'הסולם לשוק שוחרר', '#ffd98a'); writeSave(G.check);
+}
+function drawShortcut(){
+  const sc = ST.shortcut; if (!sc) return;
+  const x = sc.x - G.cam; if (x < -40 || x > VW + 40) return;
+  kitFill('ladder', sc.x - 11, sc.top, 22, sc.bot - sc.top);
+  if (!sc.open) {                                                    // an iron grille bolted shut in front of the bottom of the ladder
+    cx.fillStyle = 'rgba(30,30,36,.9)'; for (let k = -14; k <= 14; k += 5) cx.fillRect(x + k, sc.bot - 96, 2, 96);
+    cx.fillRect(x - 15, sc.bot - 96, 31, 3); cx.fillRect(x - 15, sc.bot - 50, 31, 3);
+    if (G.player && Math.abs(G.player.x - sc.x) < 30 && G.player.y > 200) { cx.font = '700 7px Heebo, sans-serif'; cx.textAlign = 'center'; cx.fillStyle = '#ffd98a'; cx.fillText('נעול — נפתח מהגגות', x, sc.bot - 104); }
+  }
+  const L = sc.lever, lx = L.x - G.cam;
+  kd(sc.open ? 'lever_on' : 'lever_off', L.x - 12, L.y - 27);
+  if (!sc.open && G.player && Math.abs(G.player.x - L.x) < 60 && G.player.y < 0 && G.tick % 40 < 28) { cx.font = '700 7px Heebo, sans-serif'; cx.textAlign = 'center'; cx.fillStyle = '#9ff0e0'; cx.fillText('הכה במנוף', lx, L.y - 34); }
+}
 function cityObj(){
-  const cd = cityData(), left = (ST.ambushes || []).filter(a => cd.a.indexOf(a.id) < 0).length;
-  setObj(left ? 'חצה את העיר העתיקה: מהרציף דרך המחסנים אל השוק' : 'המשך אל מעלות הגבעה בקצה השוק');
+  const cd = cityData(), has = id => cd.a.indexOf(id) >= 0;
+  if (!has('market')) setObj('חצה את העיר העתיקה: מהרציף דרך המחסנים אל השוק');
+  else if (!has('hill') && !has('roofs')) setObj('עלה במעלות הגבעה — או טפס לסמטת הגגות');
+  else if (!has('tower')) setObj('הגע לכיכר המגדל');
+  else setObj('הבס את שובר הקרקע בכיכר המגדל');
 }
 function drawCityHud(){
   if (!ST.city) return;
@@ -4498,7 +4607,7 @@ function worldStep(){
     f.y = sp.y; f.gy = sp.y;
     G.foes.push(f);
   }
-  if (!G.boss && ST.bossX && livePlayers().some(p => p.x > ST.bossX)) {      // the courtyard seals and the boss walks in
+  if (!G.boss && ST.bossX && !G.amb && (!ST.bossAfter || cityData().a.indexOf(ST.bossAfter) >= 0) && livePlayers().some(p => p.x > ST.bossX)) {      // the courtyard seals and the boss walks in
     G.locked = true; G.camMin = ST.w - VW;
     G.boss = makeBoss(); G.boss.gy = G.boss.y;
     G.bossIntro = 130;
@@ -4611,8 +4720,13 @@ function stoneFill(x, y, w, h){
   if (x + w <= x1) cx.fillRect(x + w - 2, y, 2, h);
   cx.restore();
 }
-function zoneAt(x){ return (ST.zones || []).find(z => x >= z.x0 && x < z.x1) || (ST.zones || [])[0]; }
+function zoneAt(x, y){
+  const Z = ST.zones || [];
+  return Z.find(z => z.yMax !== undefined && y !== undefined && y < z.yMax && x >= z.x0 && x < z.x1) || Z.find(z => z.yMax === undefined && x >= z.x0 && x < z.x1) || Z[0];
+}
 function drawZonesBg(){
+  cx.save(); cx.translate(0, (G.camY || 0) * 0.92);
+  cx.fillStyle = '#9cc8e8'; cx.fillRect(0, -40, VW, 60);
   const xc = G.cam + VW / 2, FADE = 160;
   const one = (z, a) => {
     const im = IMG[z.bg]; if (!im || a <= 0) return;
@@ -4620,23 +4734,42 @@ function drawZonesBg(){
     const prog = Math.max(0, Math.min(1, (G.cam - z.x0 + VW * 0.3) / Math.max(1, z.x1 - z.x0)));
     cx.globalAlpha = a; cx.drawImage(im, Math.round(-prog * (w - VW) * SC) / SC, -4, w, h); cx.globalAlpha = 1;
   };
-  const z = zoneAt(xc), k = ST.zones.indexOf(z);
-  one(z, 1);
-  const nx = ST.zones[k + 1], pv = ST.zones[k - 1];
-  if (nx && xc > z.x1 - FADE) one(nx, (xc - (z.x1 - FADE)) / FADE * 0.5);
-  if (pv && xc < z.x0 + FADE) one(pv, ((z.x0 + FADE) - xc) / FADE * 0.5);
+  const z = (G.player && zoneAt(G.player.x, G.player.y)) || zoneAt(xc);
+  if (z !== G.bgZ) { G.bgPrev = G.bgZ; G.bgZ = z; G.bgFade = G.bgPrev ? 0 : 1; }
+  G.bgFade = Math.min(1, (G.bgFade || 0) + 0.03);
+  if (G.bgPrev && G.bgFade < 1) one(G.bgPrev, 1);
+  one(z, G.bgPrev && G.bgFade < 1 ? G.bgFade : 1);
   const haze = cx.createLinearGradient(0, 0, 0, VH);
   haze.addColorStop(0, 'rgba(40,30,20,.06)'); haze.addColorStop(1, 'rgba(40,30,20,.30)');
   cx.fillStyle = haze; cx.fillRect(0, 0, VW, VH);
+  cx.restore();
 }
 // ---- street furniture of the Old City: hideouts, roofs, awnings, signs ----
 function drawHides(){
   const t = G.tick;
   for (const h of ST.hides || []) {
     const x = h.x - G.cam; if (x < -80 || x > VW + 80) continue;
+    if (G.amb && G.amb.a.chain && G.amb.state === 'tell' && G.amb.hides.indexOf(h.id) >= 0 && h.type === 'door') h.open = false;
     const amb = G.amb && G.amb.hides.indexOf(h.id) >= 0 ? G.amb : null, tell = amb && amb.state === 'tell', sh = tell ? Math.sin(t * 1.3) * 1.4 : 0;
+    const Y0 = h.y === undefined ? 232 : h.y;
+    if (h.type === 'balcony' || h.type === 'roofdrop') {           // a wooden balcony / a roof edge above; a growing shadow below warns of the jump
+      if (h.type === 'balcony') {
+        const by = h.top + 8; cx.fillStyle = '#c2aa80'; cx.fillRect(x - 40, by - 70, 80, 70);
+        cx.fillStyle = '#2f5f9a'; cx.fillRect(x - 12, by - 56, 24, 50);
+        cx.fillStyle = '#6a4a2a'; cx.fillRect(x - 34, by, 68, 5); cx.strokeStyle = '#3a2a1a'; cx.lineWidth = 1;
+        for (let k = -32; k <= 32; k += 6) { cx.beginPath(); cx.moveTo(x + k, by); cx.lineTo(x + k, by - 16); cx.stroke(); } cx.fillRect(x - 34, by - 17, 68, 2);
+        cx.fillStyle = '#d0408a'; for (let k = 0; k < 7; k++) { cx.beginPath(); cx.arc(x - 30 + k * 10, by - 18 + (k % 2) * 2, 3, 0, 7); cx.fill(); }
+      } else { cx.fillStyle = 'rgba(200,180,140,.9)'; cx.fillRect(x - 46, h.top - 6, 92, 8); cx.fillStyle = '#e6d6b2'; cx.fillRect(x - 46, h.top - 8, 92, 2); }
+      if (tell) { const k = Math.min(1, amb.t / 40); cx.fillStyle = 'rgba(0,0,0,' + (0.15 + 0.3 * k).toFixed(2) + ')'; cx.beginPath(); cx.ellipse(x, Y0 - 1, 6 + 14 * k, 3, 0, 0, 7); cx.fill(); }
+      continue;
+    }
+    if (h.type === 'wall' || h.type === 'rail') {                  // a low wall with flowers / an iron roof railing someone crouches behind
+      if (h.type === 'wall') { cx.fillStyle = '#c9b287'; cx.fillRect(x - 40 + sh, Y0 - 26, 80, 26); cx.fillStyle = '#ddc9a2'; cx.fillRect(x - 42 + sh, Y0 - 29, 84, 4); cx.fillStyle = '#d0408a'; for (let k = 0; k < 9; k++) { cx.beginPath(); cx.arc(x - 38 + k * 9.5, Y0 - 30 - (k % 3), 3.2, 0, 7); cx.fill(); } cx.fillStyle = '#4a7a3a'; cx.fillRect(x - 40, Y0 - 31, 80, 2); }
+      else { cx.strokeStyle = '#2a2a30'; cx.lineWidth = 1.4; cx.beginPath(); cx.moveTo(x - 44 + sh, Y0 - 22); cx.lineTo(x + 44 + sh, Y0 - 22); cx.stroke(); for (let k = -44; k <= 44; k += 7) { cx.beginPath(); cx.moveTo(x + k + sh, Y0); cx.lineTo(x + k + sh, Y0 - 22); cx.stroke(); } cx.fillStyle = 'rgba(60,50,40,.35)'; cx.fillRect(x - 44, Y0 - 20, 88, 20); }
+      continue;
+    }
     if (h.type === 'arch') {                                       // stone arch of the harbour arcade with a dark vault
-      const y = 232, w = 46, ht = 74;
+      const y = Y0, w = 46, ht = 74;
       cx.fillStyle = '#c9b48e'; cx.fillRect(x - w / 2 - 7, y - ht - 12, w + 14, ht + 12);
       const g = cx.createLinearGradient(0, y - ht, 0, y); g.addColorStop(0, '#120c08'); g.addColorStop(1, '#2a1e14');
       cx.fillStyle = g; cx.beginPath(); cx.moveTo(x - w / 2, y); cx.lineTo(x - w / 2, y - ht + w / 2); cx.arc(x, y - ht + w / 2, w / 2, Math.PI, 0); cx.lineTo(x + w / 2, y); cx.fill();
@@ -4644,7 +4777,7 @@ function drawHides(){
       cx.fillStyle = 'rgba(255,200,120,.75)'; cx.beginPath(); cx.arc(x, y - ht + 16, 2.2, 0, 7); cx.fill();
       if (tell) { cx.fillStyle = 'rgba(0,0,0,.55)'; const sx = x + Math.sin(t * 0.2) * 10; cx.beginPath(); cx.ellipse(sx, y - 26, 6, 18, 0, 0, 7); cx.fill(); cx.beginPath(); cx.arc(sx, y - 48, 5, 0, 7); cx.fill(); }
     } else if (h.type === 'door') {                                // blue warehouse door in a stone frame
-      const y = 232, open = h.open;
+      const y = Y0, open = h.open;
       cx.fillStyle = '#bfa77e'; cx.fillRect(x - 24, y - 80, 48, 80);
       cx.fillStyle = open ? '#140e0a' : '#2f5f9a'; cx.fillRect(x - 18 + sh, y - 72, 36, 72);
       if (!open) { cx.fillStyle = '#25507f'; for (let k = 0; k < 6; k++) cx.fillRect(x - 17 + k * 6 + sh, y - 71, 1, 70); cx.fillStyle = '#1a3a5c'; cx.fillRect(x - 0.5 + sh, y - 72, 1, 72); cx.fillStyle = '#c8b070'; cx.fillRect(x + 3 + sh, y - 38, 2, 4); }
@@ -4659,7 +4792,7 @@ function drawHides(){
       for (let k = 0; k < 14; k++) { cx.fillStyle = fr[k % 5]; cx.beginPath(); cx.arc(x - 42 + k * 5.2, y - 26 + (k % 2) * 2, 2.6, 0, 7); cx.fill(); }
       cx.fillStyle = '#5a3c20'; for (let k = 0; k < 3; k++) cx.fillRect(x - 44 + k * 25, y - 18, 22, 1.5);
     } else if (h.type === 'alley') {                               // a narrow dark side alley between two walls
-      const y = 232;
+      const y = Y0;
       cx.fillStyle = '#c4ad86'; cx.fillRect(x - 30, y - 120, 60, 120);
       const g = cx.createLinearGradient(x - 14, 0, x + 14, 0); g.addColorStop(0, '#20160e'); g.addColorStop(0.5, '#3a2a1a'); g.addColorStop(1, '#20160e');
       cx.fillStyle = g; cx.fillRect(x - 14, y - 110, 28, 110);
@@ -4670,6 +4803,16 @@ function drawHides(){
 }
 function drawRoofPlat(q){
   const x = q.x - G.cam; if (x > VW + 10 || x + q.w < -10) return;
+  if (q.roof2) {
+    const g = cx.createLinearGradient(0, q.y, 0, q.y + 70); g.addColorStop(0, '#e2d2ae'); g.addColorStop(1, 'rgba(226,210,174,0)');
+    cx.fillStyle = g; cx.fillRect(x + 4, q.y + 8, q.w - 8, 70);
+    cx.fillStyle = '#2f5f9a'; for (let k = 30; k < q.w - 30; k += 70) { cx.fillRect(x + k, q.y + 18, 12, 18); cx.fillStyle = 'rgba(0,0,0,.25)'; cx.fillRect(x + k, q.y + 36, 12, 2); cx.fillStyle = '#2f5f9a'; }
+    cx.fillStyle = '#f2ead8'; cx.fillRect(x, q.y, q.w, 8); cx.fillStyle = '#fffaf0'; cx.fillRect(x, q.y, q.w, 2);
+    for (let k = 20; k < q.w - 20; k += 110) { cx.fillStyle = '#eef0f2'; cx.fillRect(x + k, q.y - 14, 14, 14); cx.fillStyle = '#9aa0aa'; cx.fillRect(x + k, q.y - 15, 14, 2); }
+    cx.strokeStyle = 'rgba(60,60,60,.6)'; cx.lineWidth = 0.6; cx.beginPath(); cx.moveTo(x + 50, q.y - 24); cx.lineTo(x + 140, q.y - 22); cx.stroke();
+    const cl = ['#f4f4f4', '#7aa0d8', '#e8c86a', '#f4f4f4']; for (let k = 0; k < 4; k++) { cx.fillStyle = cl[k]; cx.fillRect(x + 60 + k * 20, q.y - 23, 9, 11); }
+    return;
+  }
   if (q.stair) { cx.fillStyle = '#cdb68c'; cx.fillRect(x, q.y, q.w, 232 - q.y); cx.fillStyle = '#e2cfa6'; cx.fillRect(x, q.y, q.w, 3); cx.fillStyle = 'rgba(80,60,30,.25)'; cx.fillRect(x, q.y + 3, q.w, 2); return; }
   if (q.awning) {                                                  // blue-and-white striped market awning
     for (let k = 0; k < q.w; k += 10) { cx.fillStyle = (k / 10) % 2 ? '#f2eee4' : '#2f6fb0'; cx.fillRect(x + k, q.y, Math.min(10, q.w - k), 7); }
@@ -4728,7 +4871,7 @@ function drawCity(){
       cx.fillRect(x, 246 + (i * 7) % 20, 6 + (i % 3) * 3, 1);
     }
   }
-  if (ST.city) { drawHides(); drawSigns(); }
+  if (ST.city) { drawHides(); drawSigns(); drawShortcut(); }
   for (const f of ST.facades) kitFill('wall', f[0], f[1], f[2], f[3], f[4]);
   for (const d of ST.decor) { const r = ATLAS.meta.kit[d[0]]; kd(d[0], d[1], d[2] - r[3] / SC, 0.92); }
   for (const s of ST.solids) {
@@ -4795,7 +4938,7 @@ function drawCity(){
     cx.restore();
   }
   for (const q of ST.plats) {
-    if (q.roof || q.awning || q.stair) { drawRoofPlat(q); continue; }
+    if (q.roof || q.roof2 || q.awning || q.stair) { drawRoofPlat(q); continue; }
     const n = Math.max(1, Math.round(q.w / 50)), r = ATLAS.meta.kit[q.sp ? 'moving' : 'platform'];
     if (q.sp) kd('moving', q.x + q.w / 2 - r[2] / SC / 2, q.y - r[3] / SC + 14);
     else for (let i = 0; i < n; i++) kd('platform', q.x + i * (q.w / n) - 2, q.y - 2);
@@ -5056,6 +5199,7 @@ function frame(now){
   else {
     cx.save();
     cx.translate(Math.round(G.sx * SC) / SC, Math.round(G.sy * SC) / SC);
+    cx.translate(0, -Math.round((G.camY || 0) * SC) / SC);
     if (!r3) drawWorld();
     drawEntities();
     cx.restore();
@@ -5590,7 +5734,7 @@ document.getElementById('btnFull').addEventListener('click', () => {
 // leaving the tab or the app pauses the game and drops held keys
 document.addEventListener('visibilitychange', () => { if (document.hidden && G.scene === 'play') { G.scene = 'pause'; MUS.on = false; } });
 
-window.__yoru = { G: G, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, cityData: cityData, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
+window.__yoru = { G: G, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
 loadSprites().then(() => { try { if (window.THREE) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
 })();
 </script>
