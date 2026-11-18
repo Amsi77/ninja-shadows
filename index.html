@@ -93,6 +93,10 @@ body.ctl-preview #touch{display:block}
 .tb svg{width:42%;height:42%;fill:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6))}
 .tb b{font:800 10px Heebo,sans-serif;text-shadow:0 1px 2px #000;line-height:1}
 .tb.on .v{background:rgba(255,190,80,.42);border-color:rgba(255,220,150,.9)}
+.tb.act{opacity:.35;transition:opacity .2s}
+.tb.act.ready{opacity:1}
+.tb.act.ready .v{background:rgba(90,200,140,.55);border-color:#bfffd8;box-shadow:0 0 14px rgba(120,255,170,.7)}
+.tb.act b{font-size:8.5px;white-space:nowrap}
 .tb.pow{opacity:.28;transition:opacity .25s}
 .tb.pow.ready{opacity:1}
 .tb.pow.ready .v{background:radial-gradient(circle,rgba(255,226,122,.75),rgba(255,120,60,.55));border-color:#ffe9a8;animation:powPulse .7s ease-in-out infinite alternate}
@@ -200,6 +204,7 @@ html,body{overscroll-behavior:none}
       <div class="tact" id="tact">
         <button type="button" class="tb" id="tbShoot" data-a="shoot"><span class="v"><svg viewBox="0 0 24 24"><path d="M12 1.5l2.6 7.9 7.9 2.6-7.9 2.6L12 22.5l-2.6-7.9L1.5 12l7.9-2.6z"/><circle cx="12" cy="12" r="2.4" fill="rgba(0,0,0,.55)"/></svg><b>ירי</b></span></button>
         <button type="button" class="tb" id="tbJump" data-a="jump"><span class="v"><svg viewBox="0 0 24 24"><path d="M12 3l7 8h-4.5v9h-5v-9H5z"/></svg><b>קפיצה</b></span></button>
+        <button type="button" class="tb act" id="tbAct" data-a="act"><span class="v"><svg viewBox="0 0 24 24"><path d="M8 11V5.5a1.5 1.5 0 013 0V10V3.5a1.5 1.5 0 013 0V10V5a1.5 1.5 0 013 0v6V8a1.5 1.5 0 013 0v6c0 4.4-3.1 8-7.5 8h-.8C9 22 7 20.5 5.6 18.3L2.9 14a1.5 1.5 0 012.4-1.8L8 15z"/></svg><b>פעולה</b></span></button>
         <button type="button" class="tb pow" id="tbPow" data-a="power"><span class="v"><svg viewBox="0 0 24 24"><path d="M13.5 1.5L4 13.5h6.2L9 22.5l10-12.6h-6.4z"/></svg><b>כוח</b></span></button>
         <button type="button" class="tb big" id="tbAtk" data-a="attack"><span class="v"><svg viewBox="0 0 24 24"><path d="M7 9.5V6.8a1.6 1.6 0 013.2 0V9V5.6a1.6 1.6 0 013.2 0V9 6.4a1.6 1.6 0 013.2 0V10l.1-1.2a1.5 1.5 0 013 .2V14c0 4-2.8 7-6.8 7h-1.4C8.6 21 6 18.4 6 15v-4a1.5 1.5 0 011-1.5z"/></svg><b>תקיפה</b></span></button>
       </div>
@@ -1728,7 +1733,8 @@ const TB = [                                         // cluster offsets (px at 1
   { id: 'tbAtk',   dx: 34, dy: 22, r: 32 },
   { id: 'tbJump',  dx: -36, dy: 28, r: 26 },
   { id: 'tbShoot', dx: 6,  dy: -40, r: 26 },
-  { id: 'tbPow',   dx: -50, dy: -30, r: 22 }
+  { id: 'tbPow',   dx: -50, dy: -30, r: 22 },
+  { id: 'tbAct',   dx: -92, dy: 8,   r: 24 }
 ];
 function layoutTouch(cfg){
   cfg = cfg || ctlCfg();
@@ -1782,6 +1788,7 @@ document.querySelectorAll('.tb').forEach(n => {
       else tHold('up');
     } else if (a === 'shoot') tHold('shoot');
     else if (a === 'power') { press('power'); release('power'); }
+    else if (a === 'act') { doAction(); }
   });
   const up = e => {
     if (e.pointerId !== pid) return;
@@ -3995,6 +4002,7 @@ function drawPlayerHud(p, y0){
   }
 }
 function drawHud(){
+  actionUi();
   drawCityHud();
   drawStorm();
   drawCombo();
@@ -6001,23 +6009,44 @@ const CITY_MISSIONS=[
   {id:'marketRescue',x:3720,y:232,title:'שחרר את הסוחר ברחוב השוק',action:'שחרר סוחר',reward:25,after:'market'},
   {id:'towerSignal',x:5480,y:40,title:'השבת את משדר האות לפני כיכר המגדל',action:'השבת משדר',reward:30,requires:'marketRescue'}
 ];
-function missionNear(){if(!ST.city||G.scene!=='play'||!G.player?.alive)return null;const p=G.player,c=cityData();return CITY_MISSIONS.find(m=>!c.missions[m.id]&&Math.abs(p.x-m.x)<38&&Math.abs(p.y-m.y)<24)||null;}
+function missionNear(){if(!ST.city||G.scene!=='play'||!G.player?.alive)return null;const p=G.player,c=cityData();return CITY_MISSIONS.find(m=>!c.missions[m.id]&&Math.abs(p.x-m.x)<64&&Math.abs(p.y-m.y)<44)||null;}
 function completeCityMission(id){
   const m=CITY_MISSIONS.find(m=>m.id===id),near=missionNear(),c=cityData();
   if(!m||!near||near.id!==id||c.missions[id])return false;
-  if(m.after&&!c.a.includes(m.after)){say('נטרל תחילה את המארב בשוק',90);return false;}
-  if(m.requires&&!c.missions[m.requires]){say('שחרר תחילה את הסוחר בשוק',90);return false;}
+  if(m.after&&!c.a.includes(m.after)){big('קודם נטרל את המארב בשוק',90);say('האויבים בשוק עדיין שומרים על הסוחר',140);SFX.empty&&SFX.empty();return false;}
+  if(m.requires&&!c.missions[m.requires]){big('קודם שחרר את הסוחר ברחוב השוק',100);say('המשדר נפתח רק אחרי שהסוחר משוחרר — חזור לשוק (גם בקיצור הדרך מהגגות)',200);SFX.empty&&SFX.empty();return false;}
   c.missions[id]=true;addCoins(m.reward,m.x,m.y-28);G.check={x:m.x,y:m.y};SFX.unlock();
   if(id==='dockLedger'){SY().unlocked.fire=true;G.players.forEach(p=>gainEnergy(p,30));big('היומן נמצא · חיצי אש נפתחו',95);}
   if(id==='marketRescue'){SY().unlocked.boomer=true;big('הסוחר שוחרר · נקודת ביקורת נשמרה',95);}
   if(id==='towerSignal')big('משדר הצללים הושבת!',95);
   cityObj();writeSave(G.check);return true;
 }
+// ---- the action button: missions, gates, levers, cages, bells — whatever is next to you ----
+function actionNear(){
+  const p = G.player; if (!p || !p.alive || G.scene !== 'play') return null;
+  const m = missionNear();
+  if (m) { const c = cityData(), blocked = (m.after && !c.a.includes(m.after)) || (m.requires && !c.missions[m.requires]); return { label: blocked ? '🔒 ' + m.action : m.action, run: () => completeCityMission(m.id) }; }
+  const sc = ST.shortcut;
+  if (sc && !sc.open && Math.abs(p.x - sc.lever.x) < 40 && Math.abs(p.y - sc.lever.y) < 30) return { label: 'משוך מנוף', run: () => hitLever({ x: sc.lever.x - 10, y: sc.lever.y - 40, w: 20, h: 40 }) };
+  for (const s2 of ST.solids) if (s2.gate && !s2.open && Math.abs(p.x - s2.x) < 46 && Math.abs(p.y - (s2.y + s2.h)) < 60)
+    return { label: p.hasKey ? 'פתח שער' : '🔒 שער נעול', run: () => {
+      if (!p.hasKey) { big('צריך מפתח לשער הזה', 80); say((G.obj || 'מצא את המפתח') + '', 120); SFX.empty && SFX.empty(); return; }
+      s2.open = true; p.hasKey = false; markGate(ST.solids.indexOf(s2)); SFX.gate && SFX.gate(); questEvent('gate'); pop(s2.x, s2.y - 8, 'השער נפתח', '#ffd98a'); trauma(0.3); } };
+  for (const n of ST.npcs || []) if (!n.freed && Math.abs(p.x - n.x) < 46 && Math.abs(p.y - n.y) < 40) return { label: 'פתח את הכלוב', run: () => { n.hits = 3; n.freed = true; SFX.hit(); burst(n.x, n.y - 18, 10, '#c8c8d0', 2, 0.5); questEvent('freed', n); } };
+  for (const b of ST.bells || []) if (!b.off && Math.abs(p.x - b.x) < 40 && Math.abs(p.y - b.y) < 50) return { label: 'השתק פעמון', run: () => silenceBell(b) };
+  return null;
+}
+function doAction(){ const a = actionNear(); if (a) a.run(); return !!a; }
 const missionBtn=document.getElementById('missionInteract');
-missionBtn.addEventListener('click',e=>{e.preventDefault();const m=missionNear();if(m)completeCityMission(m.id);});
-window.addEventListener('keydown',e=>{if(e.code==='KeyF'&&!G.two&&G.scene==='play'&&!['INPUT','TEXTAREA'].includes(e.target?.tagName)){const m=missionNear();if(m){e.preventDefault();completeCityMission(m.id);}}});
+missionBtn.addEventListener('click',e=>{e.preventDefault();doAction();});
+window.addEventListener('keydown',e=>{if(e.code==='KeyF'&&!G.two&&G.scene==='play'&&!['INPUT','TEXTAREA'].includes(e.target?.tagName)){if(actionNear()){e.preventDefault();doAction();}}});
 const baseCityStep=cityStep;
-cityStep=function(){baseCityStep();if(!ST.city)return;const m=missionNear();missionBtn.hidden=!m;if(m)missionBtn.textContent=m.action+(matchMedia('(pointer:coarse)').matches?'':' · F');};
+cityStep=function(){baseCityStep();};
+function actionUi(){                                         // every frame: the touch button lights up with what it will do; on desktop the floating button shows F
+  const a = G.scene === 'play' ? actionNear() : null, touch = matchMedia('(pointer:coarse)').matches, tb = document.getElementById('tbAct');
+  missionBtn.hidden = !a || touch; if (a && !touch) missionBtn.textContent = a.label + ' · F';
+  if (tb) { const lab = a ? a.label : 'פעולה'; if (tb._lab !== lab) { tb._lab = lab; tb.querySelector('b').textContent = lab.length > 12 ? lab.slice(0, 12) : lab; } tb.classList.toggle('ready', !!a); }
+}
 const baseCityObj=cityObj;
 cityObj=function(){
   const c=cityData(),m=CITY_MISSIONS.find(m=>!c.missions[m.id]);
@@ -6093,7 +6122,7 @@ drawHud=function(){baseHud();if(!G.player)return;cx.save();cx.font='700 6px Heeb
 const baseMenuStep=menuStep;
 menuStep=function(){baseMenuStep();if(G.scene!=='play'||!ST.city)missionBtn.hidden=true;};
 
-window.__yoru = { G: G, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, navReach: navReach, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, navMove: navMove, navOk: navOk, cameraStep: cameraStep, powerTier: powerTier, completeCityMission: completeCityMission, cityMissions: CITY_MISSIONS, alertStep: alertStep, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
+window.__yoru = { G: G, actionNear: actionNear, doAction: doAction, actionUi: actionUi, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, navReach: navReach, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, navMove: navMove, navOk: navOk, cameraStep: cameraStep, powerTier: powerTier, completeCityMission: completeCityMission, cityMissions: CITY_MISSIONS, alertStep: alertStep, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
 loadSprites().then(() => { try { if (window.THREE) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
 })();
 </script>
