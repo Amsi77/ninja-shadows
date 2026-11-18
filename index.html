@@ -466,6 +466,11 @@ function heroRecipe(shoot, bowPose, bowOverlay){
     punch3: [0, [F('idle', 7, { rot: -9 }), F('kick', 4), F('kick', 99)]],
     kick:   [0, [F('idle', 8, { rot: -7 }), F('kick', 4), F('kick', 99)]],
     airkick:[0, [F('kick', 99, { rot: 16, dy: -3 })]],
+    grab:   [0, [F('idle', 3, { rot: -6 }), F('punch', 99, { dx: 2, rot: -4 })]],
+    counter:[0, [F('idle', 2, { sx: -1, rot: 14 }), F('kick', 3, { rot: -8 }), F('kick', 99, { rot: -4 })]],
+    palm:   [0, [F('idle', 6, { rot: 8, sy: 0.96 }), F('punch', 99, { dx: 4, rot: -6 })]],
+    dashpunch:[0, [F('punch', 99, { rot: 10, dx: 4 })]],
+    dash:   [0, [F('run', 99, { runc: 1, rot: 12 })]],
     dragon: [0, [F('idle', 2, { sy: 0.8 }), F('kick', 3, { rot: -35, sy: 1.04 }), F('kick', 99, { rot: -62, dy: -4 })]],
     divekick:[0, [F('jump', 4, { rot: -10 }), F('kick', 99, { rot: 42, dy: -2 })]],
     hurricane:[1, [0, 1, 2, 3, 4, 5, 6, 7].map(k => F('kick', 2, { spin: k * 45, sy: 0.92 }))],
@@ -1558,12 +1563,16 @@ function gainEnergy(p, n){ p.en = Math.min(enMax(), (p.en || 0) + n); }
 const PW = { dur: 600, dmg: 1.5, kb: 1.3, rec: 0.85, scale: 1.22, spread: 9, gainHit: 5, gainVaried: 3, gainShot: 3, gainPerfect: 12, gainDodge: 8, specialK: 1.25 };
 const MOVES = {
   punch1: { anim: 'punch1', startup: 4, active: 3, rec: 7,  dmg: 6,  kb: 1.6, stun: 15, box: [10, -48, 25, 14], link: 'punch2' },
-  punch2: { anim: 'punch2', startup: 5, active: 3, rec: 8,  dmg: 7,  kb: 1.8, stun: 16, box: [10, -48, 27, 14], link: 'spinkick' },
+  punch2: { anim: 'punch2', startup: 5, active: 3, rec: 8,  dmg: 7,  kb: 1.8, stun: 16, box: [10, -48, 27, 14], link: 'spinkick', linkFwd: 'grab' },
   spinkick: { anim: 'spinkick', startup: 7, active: 5, rec: 15, dmg: 14, kb: 4.4, stun: 26, box: [-4, -56, 40, 30], heavy: 1, breaks: 1, lunge: 1.8, down: 1 },
   sweep:  { anim: 'sweep',  startup: 6, active: 4, rec: 13, dmg: 8,  kb: 1.4, stun: 34, box: [2, -18, 36, 16], down: 1, low: 1, breaks: 1, link: 'dragon' },
   punch3: { anim: 'punch3', startup: 7, active: 4, rec: 14, dmg: 13, kb: 4.6, stun: 24, box: [8, -60, 31, 26], down: 1, heavy: 1, lunge: 2.2 },
   kick:   { anim: 'kick',   startup: 8, active: 4, rec: 12, dmg: 11, kb: 3.0, stun: 20, box: [8, -60, 31, 26], heavy: 1 },
   airkick:{ anim: 'airkick', startup: 2, active: 40, rec: 0, dmg: 12, kb: 3.4, stun: 20, box: [6, -46, 31, 26], air: 1, heavy: 1 },
+  grab:   { anim: 'grab', startup: 4, active: 4, rec: 30, dmg: 3, kb: 0, stun: 60, box: [6, -50, 26, 30], grab: 1, label: 'תפיסה!' },
+  counter:{ anim: 'counter', startup: 2, active: 5, rec: 14, dmg: 20, kb: 5, stun: 40, box: [0, -60, 44, 46], heavy: 1, down: 1, breaks: 1, label: 'COUNTER!' },
+  palm:   { anim: 'palm', startup: 6, active: 3, rec: 16, dmg: 0, kb: 0, stun: 0, box: [0, 0, 0, 0], palm: 1, label: 'דחיפת אנרגיה' },
+  dashpunch:{ anim: 'dashpunch', startup: 2, active: 6, rec: 12, dmg: 12, kb: 4.4, stun: 26, box: [6, -54, 34, 28], heavy: 1, down: 1, lunge: 3.4 },
   dragon: { anim: 'dragon', startup: 3, active: 14, rec: 0, dmg: 14, kb: 2.0, stun: 30, box: [-4, -78, 32, 64], air: 1, heavy: 1, down: 1, endAir: 1, freeAir: 1, breaks: 1, label: 'בעיטת דרקון' },
   divekick:{ anim: 'divekick', startup: 4, active: 80, rec: 0, dmg: 11, kb: 3.0, stun: 22, box: [0, -30, 30, 30], air: 1, heavy: 1, bounce: 1, label: 'בעיטת צלילה' },
   hurricane:{ anim: 'hurricane', startup: 3, active: 34, rec: 0, dmg: 5, kb: 1.4, stun: 16, box: [-28, -58, 56, 36], air: 1, multi: 7, endAir: 1, label: 'בעיטת הוריקן' },
@@ -2007,6 +2016,35 @@ function drawCombo(){
   cx.fillStyle = 'rgba(255,255,255,.25)'; cx.fillRect(x - 70, y + 4, 70, 2); cx.fillStyle = col; cx.fillRect(x - 70 * c.t / 140, y + 4, 70 * c.t / 140, 2);
   cx.restore();
 }
+function palmBlast(p){                                    // a burst of energy from the palm: pushes everything in front away, wipes enemy shots
+  const k = CHAR_GS, ox = p.x + p.face * 18 * k, oy = p.y - 40 * k;
+  SFX.power(); flash(0.12); trauma(0.35);
+  for (let i = 0; i < 22; i++) { const a = (Math.random() - 0.5) * 1.1, sp = 2 + Math.random() * 3.5; G.parts.push({ x: ox, y: oy, vx: Math.cos(a) * sp * p.face, vy: Math.sin(a) * sp, life: 22, max: 22, col: p.key === 'red' ? 'rgba(255,140,190,.9)' : 'rgba(140,210,255,.9)', g: 0, sz: 2.4 }); }
+  (G.rings = G.rings || []).push({ x: ox, y: oy, r: 6, t: 16, face: p.face, col: p.key === 'red' ? '255,150,200' : '140,210,255' });
+  const tg = G.foes.filter(f => f.alive && !f.emerge); if (G.boss && G.boss.alive) tg.push(G.boss);
+  for (const f of tg) {
+    const dx = (f.x - p.x) * p.face; if (dx < -6 || dx > 110 || Math.abs(f.y - p.y) > 50) continue;
+    damageFoe(f, f.kind === 'boss' ? 6 : 9, p.face, { kb: 6, stun: 34, heavy: 1, down: f.kind !== 'boss', breaks: 1, proj: 1 }, f.x, f.y - 30, p, p.face);
+  }
+  for (const s2 of G.shots) if (s2.from === 'e' && (s2.x - p.x) * p.face > -6 && (s2.x - p.x) * p.face < 130 && Math.abs(s2.y - oy) < 60) s2.life = 0;
+}
+function drawRings(){
+  if (!G.rings) return;
+  cx.save(); cx.globalCompositeOperation = 'lighter';
+  for (const r of G.rings) { r.r += 6; r.t--; cx.strokeStyle = 'rgba(' + r.col + ',' + (r.t / 16).toFixed(2) + ')'; cx.lineWidth = 3; cx.beginPath(); const a0 = r.face > 0 ? -0.9 : Math.PI - 0.9; cx.arc(r.x - G.cam, r.y, r.r, a0, a0 + 1.8); cx.stroke(); }
+  cx.restore(); G.rings = G.rings.filter(r => r.t > 0);
+}
+function drawBatons(p){                                    // power mode: glowing energy batons in both hands while fighting
+  if (!(p.pwT > 0) || !p.alive || (p.state !== 'attack' && p.state !== 'dash')) return;
+  const k = CHAR_GS * (p.sc || 1), hx = p.x - G.cam + p.face * 21 * k, hy = p.y - 36 * k, sw = Math.sin(G.tick * 0.6) * 0.5;
+  cx.save(); cx.globalCompositeOperation = 'lighter'; cx.lineCap = 'round';
+  for (const [ax, ay, ang] of [[0, 0, -0.5 + sw], [-p.face * 16 * k, 3 * k, 0.7 - sw]]) {
+    const x0 = hx + ax, y0 = hy + ay, x1 = x0 + p.face * Math.cos(ang) * 26, y1 = y0 + Math.sin(ang) * 26;
+    cx.strokeStyle = p.key === 'red' ? 'rgba(255,120,180,.45)' : 'rgba(90,170,255,.45)'; cx.lineWidth = 6; cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(x1, y1); cx.stroke();
+    cx.strokeStyle = '#e8f6ff'; cx.lineWidth = 1.8; cx.beginPath(); cx.moveTo(x0, y0); cx.lineTo(x1, y1); cx.stroke();
+  }
+  cx.restore();
+}
 function swirl(p){ const a = G.tick * 0.7; for (let k = 0; k < 2; k++) G.parts.push({ x: p.x + Math.cos(a + k * 3.1) * 22, y: p.y - 34 + Math.sin(a + k * 3.1) * 8, vx: -Math.sin(a + k * 3.1) * 1.2, vy: -0.3, life: 14, max: 14, col: p.key === 'red' ? 'rgba(255,170,200,.8)' : 'rgba(170,220,255,.8)', g: 0, sz: 2 }); }
 function diveShock(p){                                   // landing from a dive kick knocks nearby foes off their feet
   trauma(0.3); burst(p.x, p.gy, 12, '#cdb89a', 2.6, 0.5); SFX.heavy && SFX.heavy();
@@ -2048,6 +2086,13 @@ function playerLogic(p){
     if (p.stun <= 0 && p.alive && p.y >= p.gy) { p.state = 'idle'; p.vy = 0; setAnim(p, 'idle', true); }
     return;
   }
+  if (p.state === 'dash') {
+    p.dashT--; p.x += p.vx; p.vx *= 0.9;
+    if (G.tick % 2 === 0) G.parts.push({ x: p.x - p.face * 10, y: p.gy - 2, vx: -p.face * 0.6, vy: -0.3, life: 14, max: 14, col: 'rgba(200,190,170,.7)', g: 0, sz: 2 });
+    if (PRESSED.punch || PRESSED.kick) { startMove(p, 'dashpunch'); return; }
+    if (p.dashT <= 0 || !grounded) { p.state = 'idle'; setAnim(p, 'idle', true); }
+    return;
+  }
   if (p.state === 'roll') {
     if (PRESSED.shoot && tryShootAir(p, HELD, p.vx >= 0 ? 1 : -1)) setAnim(p, p.airShotArrow ? 'airbow' : 'airthrow', true);
     if (p.airShotT === 1) setAnim(p, 'roll', true);            // finish the release, then keep tumbling
@@ -2084,8 +2129,18 @@ function playerLogic(p){
       if (p.mf >= su + (m.shoot === 'star' ? c.starRec : m.rec)) { p.state = 'idle'; setAnim(p, 'idle', true); }
       return;
     }
-    if (m.link && PRESSED.punch && p.mf > su) p.nextCombo = m.link;      // buffered combo input
+    if (m.link && PRESSED.punch && p.mf > su) p.nextCombo = m.linkFwd && ((HELD.right && p.face > 0) || (HELD.left && p.face < 0)) ? m.linkFwd : m.link;      // buffered combo input (toward the enemy = grab)
     if (m.multi && p.mf % m.multi === 0) p.hitList = [];      // spinning moves strike again and again
+    if (p.grabF) {                                           // carrying a grabbed foe overhead, then the throw
+      const g = p.grabF, k = CHAR_GS;
+      if (!g.alive) p.grabF = null;
+      else if (p.mf < su + m.active + 12) { g.x = p.x + p.face * 8 * k; g.y = p.y - 46 * k; g.vx = 0; g.vy = 0; g.face = -p.face; }
+      else {
+        g.grabbed = false; g.thrownT = 50; g.thrownBy = p; g.vx = p.face * 6.5; g.vy = -3.5; g.state = 'down'; g.stun = 60; setAnim(g, 'down', true);
+        p.grabF = null; SFX.heavy(); trauma(0.4); pop(p.x, p.y - 80, 'זריקה!', '#ffd24a'); comboHit(p, 'throw');
+      }
+    }
+    if (m.palm && p.mf === su) palmBlast(p);
     let bounced = false;
     if (p.mf > su && p.mf <= su + m.active) {
       const hb = faceBox(p, [m.box[0], m.box[1], m.box[2] * c.reach, m.box[3]]);
@@ -2102,6 +2157,7 @@ function playerLogic(p){
           if (wasAlive && !f.blockedLast) { gainPower(p, PW.gainHit + (p.lastMove && p.lastMove !== p.move ? PW.gainVaried : 0)); comboHit(p, p.move); }
           p.lastMove = p.move;
           if (m.bounce) bounced = true;
+          if (m.grab && !p.grabF && f.alive && f.kind !== 'boss' && f.kind !== 'brute' && !f.blockedLast && !f.emerge) { p.grabF = f; f.grabbed = true; f.state = 'down'; f.stun = 90; SFX.block(); }
         }
       }
     }
@@ -2120,7 +2176,17 @@ function playerLogic(p){
   const dirIn = (HELD.right ? 1 : 0) - (HELD.left ? 1 : 0);
   if (PRESSED.swap) cycleWeap(p);
 
+  if (p.counterT > 0) {                                      // a perfect block opens a short window for a counter-strike
+    p.counterT--;
+    if (grounded && (PRESSED.punch || PRESSED.kick)) { p.counterT = 0; G.slow = 18; startMove(p, 'counter'); return; }
+  }
+  if (grounded && !HELD.block && (PRESSED.left || PRESSED.right)) {        // double-tap a direction = dash
+    const d = PRESSED.left ? -1 : 1;
+    if (p.tapDir === d && G.tick - p.tapT < 14) { p.tapDir = 0; p.state = 'dash'; p.dashT = 14; p.face = d; p.vx = d * 6.6; p.inv = Math.max(p.inv, 8); setAnim(p, 'dash', true); SFX.roll(); landDust(p); return; }
+    p.tapDir = d; p.tapT = G.tick;
+  }
   if (grounded) {
+    if (PRESSED.shoot && HELD.block && (p.en || 0) >= 25) { p.en -= 25; p.vx = 0; startMove(p, 'palm'); return; }
     if (PRESSED.roll || (HELD.block && (PRESSED.left || PRESSED.right))) {
       doRoll(p, PRESSED.left ? -1 : (PRESSED.right ? 1 : (dirIn || p.face))); return;
     }
@@ -2688,9 +2754,19 @@ function foeStep(f){
     f.x += f.vx;
     return;
   }
+  if (f.grabbed) { stepAnim(f); return; }
   if (f.state === 'hurt' || f.state === 'down') {
     f.stun--;
-    f.x += f.vx; f.vx *= 0.88;
+    if (Math.abs(f.vx) > 2 && solidHit({ x: f.x + (f.vx > 0 ? 8 : -8 - Math.abs(f.vx)), y: f.y - 40, w: Math.abs(f.vx) + 2, h: 30 })) {     // slammed into a wall: bounce back off it
+      f.vx = -f.vx * 0.3; f.hp -= 6; f.flashT = 5; trauma(0.35); freeze(4); SFX.hitHeavy(); burst(f.x, f.y - 30, 10, '#d8c8a8', 2.2, 0.6); pop(f.x, f.y - 60, 'BAM!', '#ffe27a');
+      if (f.hp <= 0) { killFoe(f, Math.sign(f.vx) || 1); return; }
+    }
+    if (f.thrownT > 0) {
+      f.thrownT--;
+      for (const o of G.foes) if (o !== f && o.alive && !o.emerge && Math.abs(o.x - f.x) < 20 && Math.abs(o.y - f.y) < 40) { f.thrownT = 0; damageFoe(o, 10, Math.sign(f.vx) || 1, { kb: 3.4, stun: 30, heavy: 1, down: 1 }, o.x, o.y - 30, f.thrownBy, Math.sign(f.vx) || 1); }
+      if (f.vy >= 0 && f.y >= f.gy - 0.5 && f.thrownT < 46) { f.thrownT = 0; f.hp -= 10; trauma(0.3); burst(f.x, f.gy, 10, '#cdb89a', 2, 0.5); if (f.hp <= 0) { killFoe(f, Math.sign(f.vx) || 1); return; } }
+    }
+    f.x += f.vx; f.vx *= f.thrownT > 0 ? 0.98 : 0.88;
     f.vy += GRAV; f.y = Math.min(f.gy, f.y + f.vy);
     if (f.stun <= 0 && f.y >= f.gy) { f.state = 'idle'; f.cd = 24 + Math.random() * 20; setAnim(f, 'idle', true); }
     return;
@@ -3530,6 +3606,7 @@ function postFX(){
   cx.fillStyle = vg; cx.fillRect(0, 0, VW, VH);
 }
 function drawEntities(){
+  drawRings();
   for (const u of G.pickups) {
     const x = u.x - G.cam, y = u.y + Math.sin(u.t * 0.12) * 1.5;
     cx.fillStyle = 'rgba(255,214,120,' + (0.14 + 0.08 * Math.sin(u.t * 0.2)).toFixed(2) + ')';
@@ -3593,6 +3670,7 @@ function drawEntities(){
       cx.save(); cx.globalCompositeOperation = 'lighter'; cx.fillStyle = ag; cx.beginPath(); cx.arc(gx, gy, 40 * pul, 0, 7); cx.fill(); cx.restore();
     }
     if (!in3) drawActor(p, p.out ? 0.4 : (p.inv > 0 && p.alive && p.state !== 'roll' && (G.tick >> 2) % 2 ? 0.45 : 1));
+    drawBatons(p);
     if (p.state === 'block') {
       cx.strokeStyle = 'rgba(159,232,255,' + (0.5 + 0.3 * Math.sin(G.tick * 0.3)).toFixed(2) + ')'; cx.lineWidth = 1.5;
       cx.beginPath(); cx.arc(p.x - G.cam + p.face * 4, p.y - 30, 17, p.face > 0 ? -1.1 : Math.PI - 1.1, p.face > 0 ? 1.1 : Math.PI + 1.1); cx.stroke();
