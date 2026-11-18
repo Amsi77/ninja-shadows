@@ -93,6 +93,10 @@ body.ctl-preview #touch{display:block}
 .tb svg{width:42%;height:42%;fill:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6))}
 .tb b{font:800 10px Heebo,sans-serif;text-shadow:0 1px 2px #000;line-height:1}
 .tb.on .v{background:rgba(255,190,80,.42);border-color:rgba(255,220,150,.9)}
+.tb.pow{opacity:.28;transition:opacity .25s}
+.tb.pow.ready{opacity:1}
+.tb.pow.ready .v{background:radial-gradient(circle,rgba(255,226,122,.75),rgba(255,120,60,.55));border-color:#ffe9a8;animation:powPulse .7s ease-in-out infinite alternate}
+@keyframes powPulse{from{box-shadow:0 0 6px rgba(255,210,90,.6)}to{box-shadow:0 0 22px rgba(255,210,90,1)}}
 body.ctl-edit #touch .tjoy,body.ctl-edit #touch .tact{outline:2px dashed #ffd98a;outline-offset:4px;cursor:move}
 body.ctl-edit .tact{outline:none}
 body.ctl-edit .tb .v{border-style:dashed;border-color:#ffd98a}
@@ -194,6 +198,7 @@ html,body{overscroll-behavior:none}
       <div class="tact" id="tact">
         <button type="button" class="tb" id="tbShoot" data-a="shoot"><span class="v"><svg viewBox="0 0 24 24"><path d="M12 1.5l2.6 7.9 7.9 2.6-7.9 2.6L12 22.5l-2.6-7.9L1.5 12l7.9-2.6z"/><circle cx="12" cy="12" r="2.4" fill="rgba(0,0,0,.55)"/></svg><b>ירי</b></span></button>
         <button type="button" class="tb" id="tbJump" data-a="jump"><span class="v"><svg viewBox="0 0 24 24"><path d="M12 3l7 8h-4.5v9h-5v-9H5z"/></svg><b>קפיצה</b></span></button>
+        <button type="button" class="tb pow" id="tbPow" data-a="power"><span class="v"><svg viewBox="0 0 24 24"><path d="M13.5 1.5L4 13.5h6.2L9 22.5l10-12.6h-6.4z"/></svg><b>כוח</b></span></button>
         <button type="button" class="tb big" id="tbAtk" data-a="attack"><span class="v"><svg viewBox="0 0 24 24"><path d="M7 9.5V6.8a1.6 1.6 0 013.2 0V9V5.6a1.6 1.6 0 013.2 0V9 6.4a1.6 1.6 0 013.2 0V10l.1-1.2a1.5 1.5 0 013 .2V14c0 4-2.8 7-6.8 7h-1.4C8.6 21 6 18.4 6 15v-4a1.5 1.5 0 011-1.5z"/></svg><b>תקיפה</b></span></button>
       </div>
     </div>
@@ -472,8 +477,8 @@ function heroRecipe(shoot, bowPose, bowOverlay){
     airthrow:[0, [F(shoot, 99, { rot: -8, dy: -2 })]],
     spinkick:[0, [F('jump', 3, { sx: -1, rot: -12 }), F('idle', 3, { sx: -1, rot: 20 }), F('kick', 4, { rot: 4 }), F('kick', 99, { rot: 2 })]],
     sweep:  [0, [F('idle', 4, { sy: 0.8 }), F('pk:lowroll', 99, { dx: 6, dy: 2 })]],
-    flip:   [1, [0, 1, 2, 3, 4, 5, 6, 7].map(k => F('jump', 3, { spin: -k * 45, sy: 0.9 }))],
-    backflip:[1, [0, 1, 2, 3, 4, 5, 6, 7].map(k => F('jump', 3, { spin: k * 45, sy: 0.9 }))],
+    flip:   [0, [F('jump', 2, { rot: -14 })].concat([1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => F('pk:lowroll', 2, { spin: -k * 40, dy: -15 })), [F('jump', 4, { rot: 10, sy: 1.03 }), F('jump', 99, { rot: 4 })])],
+    backflip:[0, [F('jump', 2, { rot: 14 })].concat([1, 2, 3, 4, 5, 6, 7, 8, 9].map(k => F('pk:lowroll', 2, { spin: k * 40, dy: -15, sx: -1 })), [F('jump', 4, { rot: -8 }), F('jump', 99, { rot: -2 })])],
     airbow: [0, [F(bowPose, 99, { rot: -6, dy: -2, bow: bowOverlay })]],
     gapjump:[0, [F('pk:gapjump', 99)]],
     walljump:[0, [F('pk:walljump', 99)]],
@@ -1484,8 +1489,49 @@ function gainPower(p, n){
 function activatePower(p){
   if (!p || !p.alive || p.pwT > 0 || (p.pw || 0) < 100 || G.scene !== 'play') return;
   p.pwT = PW.dur; SFX.power(); flash(0.25); trauma(0.3);
-  big('מצב עוצמה!', 60);
+  big('סערת הצללים!', 70);
+  shadowStorm(p);
   for (let i = 0; i < 26; i++) { const a = i / 26 * 6.283; G.parts.push({ x: p.x + Math.cos(a) * 6, y: p.y - 26 + Math.sin(a) * 6, vx: Math.cos(a) * 2.6, vy: Math.sin(a) * 2.6, life: 26, max: 26, col: p.key === 'red' ? '#ff6a8a' : '#6aa8ff', g: 0, sz: 2 }); }
+}
+// ---- the secret power: Shadow Storm. The screen darkens, the ninja blinks from foe to foe and cuts each one ----
+function shadowStorm(p){
+  const t = G.foes.filter(f => f.alive && f.kind !== 'echodup' && onScreen(f.x, 0));
+  if (G.boss && G.boss.alive && onScreen(G.boss.x, 0)) t.push(G.boss);
+  G.storm = { p: p, list: t, i: 0, t: 0, x0: p.x, y0: p.y, dur: 24 + t.length * 9 };
+  p.inv = Math.max(p.inv, G.storm.dur + 30);
+  G.foes.filter(f => f.kind === 'echodup' && f.alive).forEach(f => { smokePuff(f); f.alive = false; });
+  for (const s2 of G.shots) if (s2.from === 'e') s2.life = 0;        // the storm wipes enemy projectiles too
+}
+function stormStep(){
+  const S2 = G.storm; if (!S2) return false;
+  S2.t++;
+  if (S2.t > 16 && (S2.t - 16) % 9 === 0 && S2.i < S2.list.length) {
+    const f = S2.list[S2.i++], p = S2.p;
+    if (f.alive) {
+      const dir = f.x >= p.x ? 1 : -1;
+      p.x = f.x - dir * 26; p.face = dir;
+      const dmg = f.kind === 'boss' ? f.hpMax * 0.12 : 40;
+      damageFoe(f, dmg, dir, { kb: 4, stun: 40, heavy: 1, down: f.kind !== 'boss', breaks: 1 }, f.x, f.y - 36, p, dir);
+      (G.slashes = G.slashes || []).push({ x: f.x, y: f.y - 34 * CHAR_GS, t: 14, a: Math.random() * 0.8 - 0.4 });
+      SFX.hitHeavy(); trauma(0.45); comboHit(p, 'storm');
+    }
+  }
+  if (S2.t >= S2.dur) { G.storm = null; flash(0.3); }
+  return true;
+}
+function drawStorm(){
+  if (G.storm) { const k = Math.min(1, G.storm.t / 10, (G.storm.dur - G.storm.t) / 10); cx.fillStyle = 'rgba(8,4,20,' + (0.55 * k).toFixed(2) + ')'; cx.fillRect(0, 0, VW, VH); }
+  if (!G.slashes) return;
+  cx.save(); cx.globalCompositeOperation = 'lighter'; cx.lineCap = 'round';
+  for (const sl of G.slashes) {
+    const x = sl.x - G.cam, y = sl.y, l = 40, k = sl.t / 14;
+    cx.strokeStyle = 'rgba(255,240,255,' + k.toFixed(2) + ')'; cx.lineWidth = 3 * k + 0.5;
+    cx.beginPath(); cx.moveTo(x - l * Math.cos(0.7 + sl.a), y - l * Math.sin(0.7 + sl.a)); cx.lineTo(x + l * Math.cos(0.7 + sl.a), y + l * Math.sin(0.7 + sl.a)); cx.stroke();
+    cx.strokeStyle = 'rgba(180,120,255,' + (k * 0.8).toFixed(2) + ')'; cx.lineWidth = 6 * k;
+    cx.beginPath(); cx.moveTo(x - l * Math.cos(-0.7 + sl.a), y - l * Math.sin(-0.7 + sl.a)); cx.lineTo(x + l * Math.cos(-0.7 + sl.a), y + l * Math.sin(-0.7 + sl.a)); cx.stroke();
+  }
+  cx.restore();
+  G.slashes = G.slashes.filter(sl => --sl.t > 0);
 }
 function setObj(text, done){
   if (G.obj === text) return;
@@ -1650,7 +1696,8 @@ function ctlCfg(){ return Object.assign({}, CTL_DEF, S.ctl || {}); }
 const TB = [                                         // cluster offsets (px at 100%) and visual radius
   { id: 'tbAtk',   dx: 34, dy: 22, r: 32 },
   { id: 'tbJump',  dx: -36, dy: 28, r: 26 },
-  { id: 'tbShoot', dx: 6,  dy: -40, r: 26 }
+  { id: 'tbShoot', dx: 6,  dy: -40, r: 26 },
+  { id: 'tbPow',   dx: -50, dy: -30, r: 22 }
 ];
 function layoutTouch(cfg){
   cfg = cfg || ctlCfg();
@@ -1703,6 +1750,7 @@ document.querySelectorAll('.tb').forEach(n => {
       if (window.__joy && window.__joy.st.down) { press('roll'); release('roll'); }   // down + jump = roll
       else tHold('up');
     } else if (a === 'shoot') tHold('shoot');
+    else if (a === 'power') { press('power'); release('power'); }
   });
   const up = e => {
     if (e.pointerId !== pid) return;
@@ -3135,6 +3183,7 @@ function cameraStep(){
 function simulate(){
   G.tick++;
   comboStep();
+  if (stormStep()) { for (const q of G.players) stepAnim(q); return; }
   if (G.bossIntro > 0) {                                   // the boss walks in; everyone else waits
     G.bossIntro--;
     const b = G.boss;
@@ -3617,7 +3666,9 @@ function drawPlayerHud(p, y0){
   }
 }
 function drawHud(){
+  drawStorm();
   drawCombo();
+  { const pb = document.getElementById('tbPow'), rd = !!(G.player && G.player.pw >= 100 && !(G.player.pwT > 0)); if (pb && pb._rd !== rd) { pb._rd = rd; pb.classList.toggle('ready', rd); if (rd) { say(matchMedia('(pointer:coarse)').matches ? 'הכוח מלא! לחץ על ⚡ כוח' : 'הכוח מלא! לחץ E לסערת הצללים', 120); SFX.unlock(); } } }
   const two = G.players.length > 1, oy = two ? 26 : 0;
   for (const p of G.players) drawPlayerHud(p, p.idx * 26);
   // district chip: name, progress, score
