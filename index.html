@@ -459,6 +459,10 @@ function heroRecipe(shoot, bowPose, bowOverlay){
     punch3: [0, [F('idle', 7, { rot: -9 }), F('kick', 4), F('kick', 99)]],
     kick:   [0, [F('idle', 8, { rot: -7 }), F('kick', 4), F('kick', 99)]],
     airkick:[0, [F('kick', 99, { rot: 16, dy: -3 })]],
+    dragon: [0, [F('idle', 2, { sy: 0.8 }), F('kick', 3, { rot: -35, sy: 1.04 }), F('kick', 99, { rot: -62, dy: -4 })]],
+    divekick:[0, [F('jump', 4, { rot: -10 }), F('kick', 99, { rot: 42, dy: -2 })]],
+    hurricane:[1, [0, 1, 2, 3, 4, 5, 6, 7].map(k => F('kick', 2, { spin: k * 45, sy: 0.92 }))],
+    flykick:[0, [F('jump', 3, { rot: -8 }), F('kick', 99, { rot: 8, dy: -3 })]],
     throw:  [0, [F('idle', 6, { rot: -9 }), F(shoot, 99)]],
     bow:    [0, [F(bowPose, 6, { dx: -1, bow: bowOverlay }), F(bowPose, 99, { bow: bowOverlay })]],
     bowrel: [0, [F(bowPose, 99, { dx: 1, bow: bowOverlay })]],
@@ -1495,10 +1499,14 @@ const MOVES = {
   punch1: { anim: 'punch1', startup: 4, active: 3, rec: 7,  dmg: 6,  kb: 1.6, stun: 15, box: [10, -48, 25, 14], link: 'punch2' },
   punch2: { anim: 'punch2', startup: 5, active: 3, rec: 8,  dmg: 7,  kb: 1.8, stun: 16, box: [10, -48, 27, 14], link: 'spinkick' },
   spinkick: { anim: 'spinkick', startup: 7, active: 5, rec: 15, dmg: 14, kb: 4.4, stun: 26, box: [-4, -56, 40, 30], heavy: 1, breaks: 1, lunge: 1.8, down: 1 },
-  sweep:  { anim: 'sweep',  startup: 6, active: 4, rec: 13, dmg: 8,  kb: 1.4, stun: 34, box: [2, -18, 36, 16], down: 1, low: 1, breaks: 1 },
+  sweep:  { anim: 'sweep',  startup: 6, active: 4, rec: 13, dmg: 8,  kb: 1.4, stun: 34, box: [2, -18, 36, 16], down: 1, low: 1, breaks: 1, link: 'dragon' },
   punch3: { anim: 'punch3', startup: 7, active: 4, rec: 14, dmg: 13, kb: 4.6, stun: 24, box: [8, -60, 31, 26], down: 1, heavy: 1, lunge: 2.2 },
   kick:   { anim: 'kick',   startup: 8, active: 4, rec: 12, dmg: 11, kb: 3.0, stun: 20, box: [8, -60, 31, 26], heavy: 1 },
   airkick:{ anim: 'airkick', startup: 2, active: 40, rec: 0, dmg: 12, kb: 3.4, stun: 20, box: [6, -46, 31, 26], air: 1, heavy: 1 },
+  dragon: { anim: 'dragon', startup: 3, active: 14, rec: 0, dmg: 14, kb: 2.0, stun: 30, box: [-4, -78, 32, 64], air: 1, heavy: 1, down: 1, endAir: 1, freeAir: 1, breaks: 1, label: 'בעיטת דרקון' },
+  divekick:{ anim: 'divekick', startup: 4, active: 80, rec: 0, dmg: 11, kb: 3.0, stun: 22, box: [0, -30, 30, 30], air: 1, heavy: 1, bounce: 1, label: 'בעיטת צלילה' },
+  hurricane:{ anim: 'hurricane', startup: 3, active: 34, rec: 0, dmg: 5, kb: 1.4, stun: 16, box: [-28, -58, 56, 36], air: 1, multi: 7, endAir: 1, label: 'בעיטת הוריקן' },
+  flykick:{ anim: 'flykick', startup: 3, active: 22, rec: 0, dmg: 13, kb: 4.6, stun: 24, box: [4, -54, 34, 28], air: 1, heavy: 1, down: 1, breaks: 1, label: 'בעיטה מעופפת' },
   throwS: { anim: 'throw',  startup: 6, active: 0, rec: 10, shoot: 'star' },
   throwA: { anim: 'bow',    startup: 13, active: 0, rec: 12, shoot: 'arrow' }
 };
@@ -1518,15 +1526,15 @@ function makePlayer(key, idx){
 }
 const FOE_BASE = {
   // new roles reuse the fighter sheet with their own silhouette, colour, props and behaviour
-  shield:  { hp: 30, dmg: 8,  sp: 0.55, range: 26, key: 'sguard', label: 'שומר המגן' },
+  shield:  { hp: 30, dmg: 8,  sp: 0.55, range: 26, key: 'sguard', sc: 1.25, label: 'שומר המגן' },
   brute:   { hp: 70, dmg: 16, sp: 0.45, range: 30, key: 'grunt', tint: 'hue-rotate(320deg) saturate(1.6) brightness(.8)', sc: 1.32, label: 'לוחם כבד' },
-  frost:   { hp: 20, dmg: 6,  sp: 1.35, range: 140, label: 'צעיף הכפור' },
-  drummer: { hp: 58, dmg: 11, sp: 0.4,  range: 200, label: 'מתופף המלחמה' },
-  pulse:   { hp: 44, dmg: 6,  sp: 0.55, range: 180, label: 'הדופק הכחול' },
+  frost:   { hp: 20, dmg: 6,  sp: 1.35, range: 140, sc: 1.2, label: 'צעיף הכפור' },
+  drummer: { hp: 58, dmg: 11, sp: 0.4,  range: 200, sc: 1.2, label: 'מתופף המלחמה' },
+  pulse:   { hp: 44, dmg: 6,  sp: 0.55, range: 180, sc: 1.12, label: 'הדופק הכחול' },
   chain:   { hp: 34, dmg: 12, sp: 0.7,  range: 60,  label: 'קוצר השרשרת' },
-  ember:   { hp: 22, dmg: 10, sp: 0.6,  range: 170, label: 'ניב הגחלים' },
-  agile:   { hp: 16, dmg: 7,  sp: 1.7,  range: 24, key: 'striker', label: 'המכה המהירה' },
-  echo:    { hp: 24, dmg: 8,  sp: 1.0,  range: 40, key: 'echo', label: 'הד הצל' },
+  ember:   { hp: 22, dmg: 10, sp: 0.6,  range: 170, sc: 1.2, label: 'ניב הגחלים' },
+  agile:   { hp: 16, dmg: 7,  sp: 1.7,  range: 24, key: 'striker', sc: 1.22, label: 'המכה המהירה' },
+  echo:    { hp: 24, dmg: 8,  sp: 1.0,  range: 40, key: 'echo', sc: 1.22, label: 'הד הצל' },
   grunt:   { hp: 26, dmg: 9,  sp: 0.9,  range: 26 },
   thrower: { hp: 18, dmg: 8,  sp: 0.75, range: 130 },
   archer:  { hp: 20, dmg: 11, sp: 0.6,  range: 200 }
@@ -1541,11 +1549,15 @@ function makeFoe(type, x){
     flashT: 0, alive: true, deadT: 0
   };
 }
+function eliteRoll(f){                                    // about one foe in eight is an elite
+  if (f.kind === 'echodup' || Math.random() > 0.13 || G.stage === 0 && G.foes.length < 3) return f;
+  f.elite = true; f.hp = Math.round(f.hp * 1.8); f.dmg *= 1.2; f.sc *= 1.08; return f;
+}
 function makeBoss(){
   const d = DIFF[G.diff];
   const hp = Math.round(({ warden: 300, shadow: 280, raven: 300, emperor: 440 }[ST.bossKey] || 340) * d.hpK * (G.two ? 1.5 : 1));
   return {
-    kind: 'boss', key: ST.bossKey || 'boss', x: ST.w + 40, y: ST.bossY || ST.solids[ST.solids.length - 3].y, vx: 0, vy: 0, face: -1,
+    kind: 'boss', key: ST.bossKey || 'boss', sc: ({ raven: 1.22, emperor: 1.18 }[ST.bossKey] || 1), x: ST.w + 40, y: ST.bossY || ST.solids[ST.solids.length - 3].y, vx: 0, vy: 0, face: -1,
     hp: hp, hpMax: hp, dmg: 16 * d.dmgK,
     an: 'idle', af: 0, at: 0, state: 'idle', stun: 0,
     cd: 70, mf: 0, attack: null, hitDone: false, lastAttack: null,
@@ -1681,7 +1693,9 @@ document.querySelectorAll('.tb').forEach(n => {
     n.classList.add('on'); if (navigator.vibrate) try { navigator.vibrate(8); } catch (x) {}
     if (G.scene !== 'play') { press('start'); release('start'); return; }      // menus: any button confirms
     if (a === 'attack') {                     // one button: punch combo on the ground, flying kick in the air; hold = block
-      press('punch'); press('kick'); release('punch'); release('kick');
+      const pl = G.player, js = window.__joy && window.__joy.st, air = pl && pl.state === 'jump';
+      if (pl && (pl.state === 'run' || (air && js && (js.down || js.up)))) { press('kick'); release('kick'); }
+      else { press('punch'); press('kick'); release('punch'); release('kick'); }
       clearTimeout(CTL.blockT);
       CTL.blockT = setTimeout(() => { if (pid !== null) tHold('block'); }, 380);
     } else if (a === 'jump') {
@@ -1832,7 +1846,12 @@ cv.addEventListener('pointerdown', e => {
 // ===================================================================
 // 9. helpers
 // ===================================================================
-function hurtBox(e){
+function hurtBox(e){                                     // the drawn size grows the body too (players keep theirs in power mode)
+  const b = hurtBox0(e), k = e.kind !== 'player' && e.sc > 1.05 ? e.sc : 1;
+  if (k === 1) return b;
+  const w = b.w * k, h = b.h * k; return { x: b.x + b.w / 2 - w / 2, y: b.y + b.h - h, w: w, h: h };
+}
+function hurtBox0(e){
   if (e.kind === 'echo' || e.kind === 'echodup') return { x: e.x - 10, y: e.y - 50, w: 20, h: 50 };
   if (e.kind === 'shield' && e.key === 'sguard') return { x: e.x - 13, y: e.y - 52, w: 26, h: 52 };
   if (e.kind === 'drummer') return { x: e.x - 14, y: e.y - 52, w: 28, h: 52 };
@@ -1882,6 +1901,12 @@ function startMove(p, name){
   p.state = 'attack'; p.move = name; p.mf = 0; p.hitList = []; p.nextCombo = null;
   setAnim(p, MOVES[name].anim, true);
   if (!MOVES[name].shoot) SFX.swing();
+  const lbl = MOVES[name].label;
+  if (lbl) { pop(p.x, p.y - 70, lbl, p.key === 'red' ? '#ff9ab8' : '#9fd4ff'); SFX.jump(); }
+  if (name === 'dragon') { p.vy = 0; p.vx = 0; burst(p.x, p.gy, 8, '#ffd27a', 2, 0.6); }
+  if (name === 'flykick') { p.vy = -3.2; p.y -= 1; p.vx = p.face * 5.4; landDust(p); }
+  if (name === 'hurricane') { p.vy = Math.min(p.vy, -1.5); }
+  if (name === 'divekick') { p.vy = -1; p.vx = 0; }
 }
 function doRoll(p, dir){
   p.state = 'roll'; p.rollT = 20; p.vx = dir * (2.6 + p.c.speed * 0.9); p.face = dir;
@@ -1889,6 +1914,38 @@ function doRoll(p, dir){
   setAnim(p, 'roll', true);
   SFX.roll();
   burst(p.x, p.gy, 6, '#9fb0d8', 1.6, 0.3);
+}
+const RANK_TXT = { C: 'COOL!', B: 'BRAVO!', A: 'AWESOME!', S: 'STYLISH!!' }, RANKS = 'DCBAS';
+function comboHit(p, mv){
+  const c = G.cmb || (G.cmb = { n: 0, t: 0, moves: {}, rank: null });
+  c.n++; c.t = 140; c.moves[mv] = 1; c.pop = 8;
+  const style = c.n + 5 * (Object.keys(c.moves).length - 1);   // different moves count more than repeating one
+  const r = style >= 55 ? 'S' : style >= 36 ? 'A' : style >= 22 ? 'B' : style >= 10 ? 'C' : 'D';
+  if (r !== c.rank) { if (RANKS.indexOf(r) > RANKS.indexOf(c.rank || 'D')) { big(RANK_TXT[r], 55); SFX.unlock(); if (r === 'S') flash(0.15); } c.rank = r; }
+}
+function comboStep(){
+  const c = G.cmb; if (!c || !c.n) return;
+  if (c.pop > 0) c.pop--;
+  if (--c.t > 0) return;
+  const bonus = c.n >= 5 ? Math.floor(c.n / 5) * 2 + RANKS.indexOf(c.rank) * 3 : 0;
+  if (bonus && G.player) { addCoins(bonus); pop(G.player.x, G.player.y - 84, 'קומבו ' + c.n + ' · ' + c.rank + ' · +' + bonus + ' 🪙', '#ffd24a'); }
+  G.cmb = { n: 0, t: 0, moves: {}, rank: null };
+}
+function drawCombo(){
+  const c = G.cmb; if (!c || c.n < 3) return;
+  const x = VW - 14, y = 70, k = 1 + (c.pop || 0) * 0.04, col = { D: '#c8c4e8', C: '#7ad8ff', B: '#7aff9a', A: '#ffd24a', S: '#ff6aa8' }[c.rank || 'D'];
+  cx.save(); cx.textAlign = 'right'; cx.globalAlpha = Math.min(1, c.t / 30);
+  cx.font = '900 ' + (22 * k).toFixed(1) + 'px Heebo, sans-serif'; cx.fillStyle = col; cx.strokeStyle = 'rgba(0,0,0,.6)'; cx.lineWidth = 3;
+  cx.strokeText(c.rank || 'D', x, y); cx.fillText(c.rank || 'D', x, y);
+  cx.font = '900 10px Heebo, sans-serif'; cx.fillStyle = '#fff'; cx.strokeText(c.n + ' מכות', x - 22, y - 4); cx.fillText(c.n + ' מכות', x - 22, y - 4);
+  cx.fillStyle = 'rgba(255,255,255,.25)'; cx.fillRect(x - 70, y + 4, 70, 2); cx.fillStyle = col; cx.fillRect(x - 70 * c.t / 140, y + 4, 70 * c.t / 140, 2);
+  cx.restore();
+}
+function swirl(p){ const a = G.tick * 0.7; for (let k = 0; k < 2; k++) G.parts.push({ x: p.x + Math.cos(a + k * 3.1) * 22, y: p.y - 34 + Math.sin(a + k * 3.1) * 8, vx: -Math.sin(a + k * 3.1) * 1.2, vy: -0.3, life: 14, max: 14, col: p.key === 'red' ? 'rgba(255,170,200,.8)' : 'rgba(170,220,255,.8)', g: 0, sz: 2 }); }
+function diveShock(p){                                   // landing from a dive kick knocks nearby foes off their feet
+  trauma(0.3); burst(p.x, p.gy, 12, '#cdb89a', 2.6, 0.5); SFX.heavy && SFX.heavy();
+  for (const f of G.foes) if (f.alive && Math.abs(f.x - p.x) < 40 && Math.abs(f.y - p.y) < 8 && f.kind !== 'echodup')
+    damageFoe(f, 4, Math.sign(f.x - p.x) || 1, { kb: 2.4, stun: 20, heavy: 0, down: f.kind !== 'brute' }, f.x, f.y - 10, p, Math.sign(f.x - p.x) || 1);
 }
 function landDust(p){ burst(p.x, p.gy, 5, '#8da0c8', 1.4, 0.4); }
 function playerLogic(p){
@@ -1908,7 +1965,7 @@ function playerLogic(p){
     if (G.tick % 5 === 0) G.parts.push({ x: p.x + (Math.random() - 0.5) * 14, y: p.y - Math.random() * 40, vx: 0, vy: 0.3, life: 18, max: 18, col: '#cfeeff', g: 0, sz: 1.5 });
   }
   if (p.flipT > 0) p.flipT--; if (p.bflipT > 0) p.bflipT--; if (p.dodgeT > 0) p.dodgeT--;
-  if (p.y >= p.gy && p.state !== 'jump') p.flipped = false;
+  if (p.y >= p.gy && p.state !== 'jump') { p.flipped = false; p.hurricaned = false; }
   if (p.pwT > 0) {                                              // power mode runs down (pause stops it with the rest of the game)
     p.pwT--; p.pw = 100 * p.pwT / PW.dur;
     if (G.tick % 3 === 0) G.parts.push({ x: p.x + (Math.random() - 0.5) * 16, y: p.y - 10 - Math.random() * 44, vx: -p.vx * 0.3, vy: -0.6, life: 18, max: 18, col: p.key === 'red' ? '#ff8aa8' : '#9fc4ff', g: -0.02, sz: 1.8 });
@@ -1941,8 +1998,13 @@ function playerLogic(p){
     const su = Math.max(2, m.startup + (m.shoot ? 0 : c.startup));
     p.mf++;
     if (m.air) {
-      p.vy += GRAV; p.y += p.vy; p.x += p.vx;
-      if (p.y >= p.gy) { p.y = p.gy; p.vy = 0; p.state = 'idle'; setAnim(p, 'idle', true); landDust(p); return; }
+      if (p.move === 'dragon' && p.mf <= su) { p.vy = 0; p.vx = 0; if (p.mf === su) { p.vy = -7.8; p.vx = p.face * 1.3; } }   // crouch, then spring up
+      else if (p.move === 'divekick') { if (p.mf > su) { p.vy = 6.4; p.vx = p.face * 4.4; } else { p.vy = 0; p.vx = 0; } }
+      else if (p.move === 'hurricane') { p.vy = Math.min(p.vy + GRAV * 0.22, 0.7); p.x += p.face * 0.9; if (G.tick % 2 === 0) swirl(p); }
+      else p.vy += GRAV;
+      p.y += p.vy; p.x += p.vx;
+      if (p.y >= p.gy && !(p.move === 'dragon' && p.mf <= su)) { const dive = p.move === 'divekick'; p.y = p.gy; p.vy = 0; p.state = 'idle'; setAnim(p, 'idle', true); landDust(p); if (dive) diveShock(p); return; }
+      if (m.endAir && p.mf > su + m.active) { p.state = 'jump'; p.airAttacked = !m.freeAir; setAnim(p, 'fall', true); return; }
     } else {
       if (m.lunge && p.mf === su) p.vx = p.face * m.lunge;
       p.x += p.vx; p.vx *= 0.8;
@@ -1957,6 +2019,8 @@ function playerLogic(p){
       return;
     }
     if (m.link && PRESSED.punch && p.mf > su) p.nextCombo = m.link;      // buffered combo input
+    if (m.multi && p.mf % m.multi === 0) p.hitList = [];      // spinning moves strike again and again
+    let bounced = false;
     if (p.mf > su && p.mf <= su + m.active) {
       const hb = faceBox(p, [m.box[0], m.box[1], m.box[2] * c.reach, m.box[3]]);
       hitCrates(hb); hitCage(hb, p); hitBells(hb);
@@ -1969,10 +2033,15 @@ function playerLogic(p){
           const mm = pk ? Object.assign({}, m, { kb: m.kb * PW.kb }) : m;
           damageFoe(f, m.dmg * c.dmg * (pk ? PW.dmg : 1), p.face, mm, hb.x + (p.face > 0 ? hb.w : 0), hb.y + hb.h / 2, p, p.face);
           gainEnergy(p, 7);
-          if (wasAlive && !f.blockedLast) gainPower(p, PW.gainHit + (p.lastMove && p.lastMove !== p.move ? PW.gainVaried : 0));
+          if (wasAlive && !f.blockedLast) { gainPower(p, PW.gainHit + (p.lastMove && p.lastMove !== p.move ? PW.gainVaried : 0)); comboHit(p, p.move); }
           p.lastMove = p.move;
+          if (m.bounce) bounced = true;
         }
       }
+    }
+    if (bounced) {                                           // a dive kick bounces off the target: chain another trick
+      p.state = 'jump'; p.vy = -6; p.vx = -p.face * 0.6; p.airAttacked = false; p.flipped = false; p.hurricaned = false;
+      p.flipT = 20; setAnim(p, 'flip', true); SFX.jump(); return;
     }
     if (!m.air && p.mf >= su + m.active + Math.max(4, Math.round(m.rec * (1 - 0.12 * upL('spd')) * (p.pwT > 0 ? PW.rec : 1)))) {
       if (p.nextCombo) startMove(p, p.nextCombo);
@@ -2008,6 +2077,8 @@ function playerLogic(p){
       return;
     }
     if (PRESSED.punch) { p.vx = 0; startMove(p, 'punch1'); return; }
+    if (PRESSED.kick && HELD.down) { startMove(p, 'dragon'); return; }
+    if (PRESSED.kick && p.state === 'run' && dirIn !== 0) { startMove(p, 'flykick'); return; }
     if (PRESSED.kick) { p.vx = 0; startMove(p, 'kick'); return; }
     if (PRESSED.up) {
       p.vy = JUMP_V; p.y += p.vy; p.state = 'jump'; p.airAttacked = false;
@@ -2029,7 +2100,13 @@ function playerLogic(p){
     return;
   }
   // airborne
-  if (PRESSED.kick && !p.airAttacked) { p.airAttacked = true; startMove(p, 'airkick'); return; }
+  if (PRESSED.kick && !p.airAttacked) {
+    p.airAttacked = true;
+    if (HELD.down) startMove(p, 'divekick');
+    else if (HELD.up && !p.hurricaned) { p.hurricaned = true; startMove(p, 'hurricane'); }
+    else startMove(p, 'airkick');
+    return;
+  }
   if (PRESSED.up && !p.flipped && p.vy > -4) {                  // air somersault: a short second lift, brief (not full) protection
     p.flipped = true; p.vy = Math.min(p.vy, -5.6); p.flipT = 24; p.inv = Math.max(p.inv, 6); p.dodgeT = 24;
     if (dirIn === -p.face) { p.vx = -p.face * 2.2; p.lockT = 18; p.backFlip = true; } else p.backFlip = false;
@@ -2123,6 +2200,8 @@ function killFoe(f, dir){
   }
   G.score += 1200;
   pop(f.x, f.y - 50, '+1200', '#ffd98a');
+  if (f.elite) { pop(f.x, f.y - 64, 'עלית הובס! +15', '#ffd24a'); addCoins(15); G.pickups.push({ x: f.x - 6, y: f.y - 20, vy: -3.8, kind: 'en', t: 0 }); }
+  if (G.locked && !G.foes.some(o => o !== f && o.alive && o.kind !== 'echodup')) { G.slow = 45; big(['FINISH!', 'K.O.!', 'BOOM!'][G.tick % 3], 60); flash(0.2); trauma(0.6); }
   G.pickups.push({ x: f.x, y: f.y - 20, vy: -3.4, kind: 'coin', val: 3 + (Math.random() * 3 | 0), t: 0 });
   if (Math.random() < 0.35) G.pickups.push({ x: f.x + 6, y: f.y - 20, vy: -2.6, kind: 'en', t: 0 });
   if (Math.random() < 0.45) {
@@ -2133,6 +2212,7 @@ function killFoe(f, dir){
 function hurtPlayer(p, dmg, fromX, heavy, unblock){
   if (p.alive && p.inv > 0 && p.dodgeT > 0 && !(p.dodgeGain > G.tick)) { p.dodgeGain = G.tick + 30; gainPower(p, PW.gainDodge); pop(p.x, p.y - 64, 'התחמקות!', '#9fe8ff'); }
   if (p.inv > 0 || !p.alive) return false;
+  if (G.cmb && G.cmb.n) G.cmb.t = Math.min(G.cmb.t, 1);      // taking a hit cashes the combo out
   const facing = (fromX >= p.x) === (p.face > 0);
   if (p.state === 'block' && facing && !unblock) {
     p.hp -= dmg * 0.15;
@@ -2956,7 +3036,7 @@ function shotsStep(){
       if (!overlap(box, hurtBox(f))) continue;
       const shooter = G.players.find(q => q.alive) ; const wasA = f.alive;
       damageFoe(f, s.dmg, Math.sign(s.vx), { kb: 1.8, stun: 14, heavy: s.kind === 'arrow', proj: 1 }, s.x, s.y, null, Math.sign(s.vx) || 1);
-      if (wasA && !f.blockedLast && s.from === 'p') gainPower(G.player, PW.gainShot);
+      if (wasA && !f.blockedLast && s.from === 'p') { gainPower(G.player, PW.gainShot); comboHit(G.player, 'shot'); }
       if (s.fire && f.alive) { f.burnT = Math.round(150 * durK()); f.burnK = 0; }            // refreshes, never stacks
       if (s.ice && f.alive) { f.slowT = Math.round((f.kind === 'boss' ? 70 : 180) * durK()); }
       if (s.bolt) chainBolt(f, s.dmg * 0.7, 3, [f]);
@@ -3012,7 +3092,7 @@ function spawnWave(){
   for (const sp of w) {
     // enemies enter from beyond the screen edge, never on top of the player
     const x = sp[1] === 'L' ? G.cam - 26 - (nl++) * 26 : G.cam + VW + 26 + (nr++) * 26;
-    const f = makeFoe(sp[0], x);
+    const f = eliteRoll(makeFoe(sp[0], x));
     if (sp[2]) { f.hp = Math.round(f.hp * 2.8); f.dmg *= 1.3; f.sp *= 1.25; f.elite = 1; say('סייר עילית!', 90); }
     G.foes.push(f);
   }
@@ -3052,6 +3132,7 @@ function cameraStep(){
 // ===================================================================
 function simulate(){
   G.tick++;
+  comboStep();
   if (G.bossIntro > 0) {                                   // the boss walks in; everyone else waits
     G.bossIntro--;
     const b = G.boss;
@@ -3297,7 +3378,13 @@ function drawEntities(){
   const in3 = window.R3 && R3.on();
   if (!in3) for (const f of G.foes) {
     if (f.ghost) { cx.save(); cx.globalAlpha = 0.5 + 0.08 * Math.sin(G.tick * 0.3); cx.filter = 'hue-rotate(15deg) saturate(1.4)'; drawSprite(f); cx.restore(); continue; }
+    if (f.elite && f.alive) { const ex = f.x - G.cam, ey = f.y - 30 * (f.sc || 1); cx.save(); cx.globalCompositeOperation = 'lighter'; const g = cx.createRadialGradient(ex, ey, 2, ex, ey, 34); g.addColorStop(0, 'rgba(255,200,60,' + (0.28 + 0.1 * Math.sin(G.tick * 0.2)).toFixed(2) + ')'); g.addColorStop(1, 'rgba(255,200,60,0)'); cx.fillStyle = g; cx.fillRect(ex - 34, ey - 40, 68, 80); cx.restore(); }
     drawShadow(f); drawActor(f, f.alive ? 1 : Math.min(1, f.deadT / 16));
+    if (f.elite && f.alive) {                                  // elite: golden ring at the feet and a star over the head
+      const ex = f.x - G.cam, hy = f.y - 62 * (f.sc || 1) - 6 + Math.sin(G.tick * 0.15) * 1.5;
+      cx.save(); cx.strokeStyle = 'rgba(255,205,70,.9)'; cx.lineWidth = 1.5; cx.beginPath(); cx.ellipse(ex, f.y, 16, 4, 0, 0, 7); cx.stroke();
+      cx.font = '900 10px Heebo, sans-serif'; cx.textAlign = 'center'; cx.fillStyle = '#ffd24a'; cx.strokeStyle = 'rgba(0,0,0,.6)'; cx.lineWidth = 2; cx.strokeText('★', ex, hy); cx.fillText('★', ex, hy); cx.restore();
+    }
     if (f.kind === 'echo' && f.alive) { const gx = f.x - G.cam + f.face * 2, gy = f.y - 36; cx.save(); cx.globalCompositeOperation = 'lighter'; const g = cx.createRadialGradient(gx, gy, 0, gx, gy, 5); g.addColorStop(0, 'rgba(230,180,255,.95)'); g.addColorStop(1, 'rgba(160,80,255,0)'); cx.fillStyle = g; cx.beginPath(); cx.arc(gx, gy, 5, 0, 7); cx.fill(); cx.restore(); }
   }
   if (G.boss && G.boss.key === 'raven' && G.boss.state === 'attack' && G.boss.attack === 'aim') {
@@ -3528,6 +3615,7 @@ function drawPlayerHud(p, y0){
   }
 }
 function drawHud(){
+  drawCombo();
   const two = G.players.length > 1, oy = two ? 26 : 0;
   for (const p of G.players) drawPlayerHud(p, p.idx * 26);
   // district chip: name, progress, score
@@ -4122,7 +4210,7 @@ function worldStep(){
   for (const sp of ST.spawns) {                     // enemies wake up as the camera reaches them
     if (sp.done || sp.x > G.cam + VW + 40) continue;
     sp.done = true;
-    const f = makeFoe(sp.t, sp.x);
+    const f = eliteRoll(makeFoe(sp.t, sp.x));
     f.y = sp.y; f.gy = sp.y;
     G.foes.push(f);
   }
@@ -4365,6 +4453,8 @@ function startRun(){
   G.trauma = 0; G.flash = 0; G.freeze = 0; G.slow = 0; G.msgT = 0;
   big('התחל!', 70);
   maybeTutorial();
+  try { if (!localStorage.getItem('ns_moves1')) { localStorage.setItem('ns_moves1', '1');           // one-time hint for the new tricks
+    setTimeout(() => say('מהלכים חדשים: ריצה+בעיטה = בעיטה מעופפת · באוויר ↓+בעיטה = צלילה (קפיצה חוזרת!) · באוויר ↑+בעיטה = הוריקן · גריפה ואז התקפה = בעיטת דרקון', 480), 2600); } } catch (e) {}
   G.scene = 'play';
   MUS.on = true; MUS.boss = false; MUS.step = 0; MUS.next = 0; MUS.tr = null;
   questInit();
