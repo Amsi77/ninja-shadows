@@ -315,7 +315,8 @@ let RS = 2;                                  // extra render scale (quality): 1 
 const S = { vol: 0.55, mus: 0.28, shake: 1, noFlash: false, crt: false, q: 2, muted: false, r3: false };
 try { const r = localStorage.getItem('yoru.set'); if (r) Object.assign(S, JSON.parse(r)); } catch (e) {}
 if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { S.shake = Math.min(S.shake, .25); S.noFlash = true; }
-const SAVE_KEY = 'yoru.save';
+const citadelPreview = new URLSearchParams(location.search).get('city') === 'citadel';
+const SAVE_KEY = citadelPreview ? 'yoru.citadel.preview' : 'yoru.save';
 const SAVE_VERSION = 3;
 // local save: belongs to this browser on this device; clearing site data removes it
 function loadSave(){
@@ -4526,7 +4527,7 @@ function buildParis4(){                       // Montmartre: steep stairs, a for
     decor: [],
     start: { x: 60, y: F } });
 }
-const STAGE_DEFS = [buildParis1, buildParis2, buildParis3, buildParis4, buildCity, buildHaifa];
+const STAGE_DEFS = [buildParis1, buildParis2, buildParis3, buildParis4, buildCity, buildHaifa, buildCitadel];
 const STAGE_ORDER = [4, 5, 0, 1, 2, 3], FINAL_STAGE = 3, CITY_STAGE = 4, HAIFA_STAGE = 5;     // play order; indices keep old saves valid
 function nextStage(i){ return STAGE_ORDER[STAGE_ORDER.indexOf(i) + 1]; }
 function stageNo(i){ return STAGE_ORDER.indexOf(i) + 1; }
@@ -4880,6 +4881,9 @@ function cityStep(){
       G.amb = { a: a, set: set, wave: 0, hides: set.map(e => e[1]), state: 'tell', t: 0, i: 0, foes: [], cam: G.cam, camMin: G.camMin };
       G.camMin = G.cam; say(a.hint, 70); if(a.rapid)SFX.go();
       break;
+    }
+    if (ST.citadel && !G.amb && ST.ambushes[0].done && p.x >= ST.w-75 && p.y <= 168) {
+      G.scene='clear'; SFX.victory(); return;
     }
     if (ST.exitX && p.x > ST.exitX && !G.foes.some(o => o.alive && onScreen(o.x, 0))) {
       G.scene = 'clear'; G.score += 5000; SFX.victory(); cheer(); const st = G.stage; G.stage = nextStage(st); writeSave(); G.stage = st;
@@ -5600,7 +5604,7 @@ function menuStep(){
     if (ok) { G.scene = 'select'; SFX.ui(); }
     else if (PRESSED.pause) toTitle();
   } else if (G.scene === 'clear') {
-    if (ok) { loadStage(nextStage(G.stage)); G.scene = 'play'; SFX.go(); }
+    if (ok) { if(ST.citadel){startRun(false);loadStage(6);} else loadStage(nextStage(G.stage)); G.scene = 'play'; SFX.go(); }
   } else if (G.scene === 'pause') {
     if (!CTL.open && (PRESSED.pause || PRESSED.start)) resumeGame();
   } else if (G.scene === 'play') {
@@ -5667,7 +5671,8 @@ function frame(now){
     if (G.scene === 'continue') drawContinue();
     if (G.scene === 'over') drawGameOver();
     if (G.scene === 'win') drawOverlay('ניצחת!', '#ffbe3d', 'Enter למשחק חדש');
-    if (G.scene === 'clear') { drawOverlay('שלב ' + stageNo(G.stage) + ' הושלם · נשמר', '#ffbe3d', 'Enter לשלב הבא: ' + (STAGE_NAMES[nextStage(G.stage)] || '')); if (G.reward) { cx.font = '800 9px Heebo, sans-serif'; cx.fillStyle = '#9fe8ff'; cx.textAlign = 'center'; cx.fillText('◈ ' + G.reward, VW / 2, 172); } }
+    if (G.scene === 'clear' && ST.citadel) drawOverlay('המצודה בידיכם', '#ffda90', 'לחצו להתחיל את המסלול מחדש');
+    else if (G.scene === 'clear') { drawOverlay('שלב ' + stageNo(G.stage) + ' הושלם · נשמר', '#ffbe3d', 'Enter לשלב הבא: ' + (STAGE_NAMES[nextStage(G.stage)] || '')); if (G.reward) { cx.font = '800 9px Heebo, sans-serif'; cx.fillStyle = '#9fe8ff'; cx.textAlign = 'center'; cx.fillText('◈ ' + G.reward, VW / 2, 172); } }
   }
   if (G.flash > 0.01) { cx.fillStyle = 'rgba(255,236,190,' + (G.flash * 0.5).toFixed(3) + ')'; cx.fillRect(0, 0, VW, VH); }
   if (S.crt) {
@@ -6304,6 +6309,37 @@ const baseHaifaMenu=menuStep;menuStep=function(){baseHaifaMenu();if(G.scene!=='p
 const haifaLaunch=document.createElement('button');haifaLaunch.id='btnHaifa';haifaLaunch.type='button';haifaLaunch.textContent='חיפה · התחל פרק חדש';haifaLaunch.title='מתחיל ריצה חדשה בחיפה עם שמירה אוטומטית';haifaLaunch.style.cssText='padding:10px 16px;border:1px solid #b9c8a8;border-radius:12px;background:#23473e;color:#f5dfaa;font-weight:bold;cursor:pointer;margin:6px;';document.getElementById('btnReset').parentElement.appendChild(haifaLaunch);
 function startHaifa(){G.two=false;G.twoIdx=0;G.runId++;startRun(false);S.r3=false;elR3.checked=false;loadStage(5);G.scene='play';MUS.on=true;document.getElementById('storyBox').hidden=true;document.getElementById('nameBox').hidden=true;dropKeys();clearPressed();}
 haifaLaunch.onclick=startHaifa;
+function buildCitadel(){
+  const zones=[
+    {id:'bridge',name:'גשר האבן',x0:0,x1:400,bg:'citadel0'},
+    {id:'gate',name:'שער המצודה',x0:400,x1:785,bg:'citadel1'},
+    {id:'court',name:'חצר הגלריה',x0:785,x1:1681,bg:'citadel2'}
+  ];
+  const plats=Array.from({length:5},(_,i)=>({x:1170+i*23,y:220-i*12,w:24,stair:1}));
+  plats.push({x:1285,y:160,w:396,stair:1},{x:935,y:158,w:109,stair:1});
+  return parisBase({id:7,citadel:true,city:true,dataKey:'citadel',name:'מצודת דוד',bg:'paris2',
+    w:1680,start:{x:42,y:232},zones,plats,solids:[{x:-300,y:232,w:2280,h:80}],
+    signs:[{x:260,y:150,t:'שער המצודה ←'},{x:1145,y:149,t:'הגלריה'}],
+    hides:[{id:'west',type:'door',x:720,y:232},{id:'east',type:'alley',x:1010,y:232},{id:'bow',type:'perch',x:976,y:158}],
+    ambushes:[{id:'citadel-court',x:840,y:232,rapid:true,hint:'מארב בחצר! קשת בגלריה',sets:[[ ['grunt','west'],['agile','east'],['archer','bow'] ]]}],
+    lanterns:[{x:600,y:232}],objFn:()=>setObj(cityData().a.includes('citadel-court')?'עלו במדרגות והגיעו לקצה הגלריה':'חצו את הגשר וטהרו את החצר')});
+}
+if(citadelPreview){
+ const picker=document.createElement('dialog');
+ picker.dir='rtl';picker.style.cssText='background:#192124;color:#ffe8b5;border:1px solid #ae9060;border-radius:14px;padding:22px;text-align:center';
+ const heading=document.createElement('h2');heading.textContent='מצודת דוד';picker.append(heading);
+ const status=document.createElement('p');status.textContent='טוען את העיר…';picker.append(status);
+ document.body.append(picker);picker.showModal();
+ fetch('citadel-views.json').then(r=>{if(!r.ok)throw Error(r.status);return r.json()}).then(async sources=>{
+   await Promise.all(sources.map(async(src,i)=>{const im=new Image();im.src=src;await im.decode();IMG['citadel'+i]=im;}));
+   status.textContent='בחרו דמות לכניסה לגשר';
+   for(const [key,name] of [['blue','AMSALEM'],['red','שיר']]){
+     const btn=document.createElement('button');btn.textContent=name;btn.style.cssText='padding:12px 20px;margin:5px;cursor:pointer';
+     btn.onclick=()=>{picker.close();G.charKey=key;G.two=false;startRun(false);S.r3=false;elR3.checked=false;loadStage(6);G.scene='play';for(const id of ['storyBox','nameBox'])document.getElementById(id).hidden=true;dropKeys();clearPressed();};
+     picker.append(btn);
+   }
+ }).catch(()=>{status.textContent='טעינת העיר נכשלה. רעננו כדי לנסות שוב.'});
+}
 // Visible, gameplay-relevant chapter reward: a close wind pulse on the existing cast.
 const baseCarmelRelease=releaseTechnique;
 releaseTechnique=function(p,type){baseCarmelRelease(p,type);if(!(p.carmelBuff>0))return;for(const f of techniqueTargets())if(f.alive&&!f.emerge&&Math.abs(f.x-p.x)<105&&Math.abs(f.y-p.y)<65&&clearPowerPath(p.x,p.y-30,f.x,f.y-30))damageFoe(f,8,Math.sign(f.x-p.x)||p.face,{kb:4,stun:18,heavy:1,breaks:1},f.x,f.y-30,p,Math.sign(f.x-p.x)||p.face);powerSmoke(p.x,p.y,'#8fe8d7',18);};
