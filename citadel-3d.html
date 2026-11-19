@@ -4,7 +4,7 @@ const scene=new THREE.Scene();scene.background=new THREE.Color('#91b7d1');scene.
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));document.body.append(renderer.domElement);renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const camera=new THREE.PerspectiveCamera(50,1,.1,300);
 scene.add(new THREE.HemisphereLight(0xd9e8f5,0x776b51,.65));const sun=new THREE.DirectionalLight(0xffedcf,2.1);sun.position.set(-23,31,18);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-38,right:38,top:34,bottom:-34,near:1,far:100});sun.shadow.bias=-.00015;sun.shadow.normalBias=.035;scene.add(sun);
-const text=await fetch('citadel-realistic-mesh.txt?v=20261119-2', { cache: 'no-store' }).then(r=>{if(!r.ok)throw Error('model');return r.text()});
+const text=await fetch('citadel-reference-mesh.txt?v=reference1', { cache: 'no-store' }).then(r=>{if(!r.ok)throw Error('model');return r.text()});
 const bytes=Uint8Array.from(atob(text.trim()),c=>c.charCodeAt(0));
 const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
 
@@ -46,8 +46,8 @@ for(let g=0;g<count;g++){
  const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.BufferAttribute(p,3));geom.computeVertexNormals();
  const mesh=new THREE.Mesh(geom,weatheredMaterial(color,g));mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);triangles+=n/3;
 }
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(160,160),weatheredMaterial([.32,.29,.22],5));ground.rotation.x=-Math.PI/2;ground.position.y=-.26;ground.receiveShadow=true;scene.add(ground);
-let yaw=.3,pitch=.18,distance=27,target=new THREE.Vector3(0,3,8),drag=null;
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(160,160),weatheredMaterial([.32,.29,.22],5));ground.rotation.x=-Math.PI/2;ground.position.y=-3.53;ground.receiveShadow=true;scene.add(ground);
+let yaw=.52,pitch=.23,distance=31,target=new THREE.Vector3(0,3,8),drag=null;
 renderer.domElement.onpointerdown=e=>{drag=[e.clientX,e.clientY];renderer.domElement.setPointerCapture(e.pointerId)};
 renderer.domElement.onpointermove=e=>{if(!drag)return;yaw-=(e.clientX-drag[0])*.006;pitch=Math.max(.06,Math.min(1.4,pitch+(e.clientY-drag[1])*.005));drag=[e.clientX,e.clientY]};
 renderer.domElement.onpointerup=renderer.domElement.onpointercancel=()=>drag=null;
@@ -58,6 +58,6 @@ document.querySelector('#gate').onclick=()=>{target.set(0,3,10);distance=20;pitc
 document.querySelector('#court').onclick=()=>{target.set(0,3,-1);distance=19;pitch=.4;yaw=.4};
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}onresize=resize;resize();
 renderer.setAnimationLoop(()=>{camera.position.set(target.x+Math.sin(yaw)*Math.cos(pitch)*distance,target.y+Math.sin(pitch)*distance,target.z+Math.cos(yaw)*Math.cos(pitch)*distance);camera.lookAt(target);renderer.render(scene,camera)});
-document.querySelector('#status').textContent='גרסת סביבה מעודכנת';window.cityReady=true;window.cityTriangles=triangles;
+document.querySelector('#status').textContent='מצודה · קשתות וחפיר';window.cityReady=true;window.cityTriangles=triangles;
 })().catch(e=>document.querySelector('#status').textContent='טעינת המודל נכשלה. רעננו לנסות שוב.');
 </script></html>
