@@ -189,6 +189,7 @@ html,body{overscroll-behavior:none}
 #missionInteract{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);z-index:8;border:1px solid #e4c78c88;border-radius:18px;background:#171b22df;color:#fff0cf;padding:10px 18px;font:700 13px var(--font-ui);min-height:48px;cursor:pointer;touch-action:manipulation}
 </style>
 
+<link rel="stylesheet" href="mobile.css">
 <div class="wrap" dir="rtl">
   <div class="marquee">
     <h1>Ninja Shadows · העיר העתיקה</h1>
@@ -286,7 +287,7 @@ html,body{overscroll-behavior:none}
     <label><input type="checkbox" id="flashOff"> הפחתת הבהובים</label>
     <label><input type="checkbox" id="crt"> מראה רטרו (CRT)</label>
     <label>איכות <select id="qual" class="ghost"><option value="0">נמוכה</option><option value="1">בינונית</option><option value="2">גבוהה</option></select></label>
-    <label><input type="checkbox" id="r3on"> דמויות תלת-ממד (ניסיוני)</label>
+    <label><input type="checkbox" id="r3on"> מצב GLB הישן (ארכיון)</label>
     <button class="ghost" id="btnMute">🔊 השתק</button>
     <button class="ghost" id="btnFull">מסך מלא</button>
     <button class="ghost" id="btnReset">חזרה למסך הפתיחה</button>
@@ -300,7 +301,7 @@ html,body{overscroll-behavior:none}
   </p>
 </div>
 
-<script src="vendor/three.min.js"></script>
+<script src="sprite-limbs.js"></script>
 <script>
 'use strict';
 (function(){
@@ -339,6 +340,7 @@ function loadSave(){
   return sv;
 }
 function writeSave(check){
+  if (G.trial) return; // The isolated movement trial must never overwrite a story save.
   try {
     const sv = { v: SAVE_VERSION, at: Date.now(), story: G.story, pw: G.players.map(p => p.pwT > 0 ? 0 : Math.round(p.pw || 0)), wids: G.players.map(p => p.wid), en: G.players.map(p => Math.round(p.en || 0)), names: G.names, stage: G.stage, charKey: G.charKey, two: G.two, diff: G.diff,
       lives: Math.max(1, G.lives), score: G.score, check: check || null,
@@ -691,7 +693,7 @@ function hipX(simg, sm, pose, hip){
   return n ? sum / n - sm.ax : 0;
 }
 function drawRunCycle(g, simg, sm, pose, k, hipK){
-  const hip = pose.h * (hipK || 0.44), hx = hipX(simg, sm, pose, hip);
+  const hip = Math.round(pose.h * (hipK || 0.60)), hx = hipX(simg, sm, pose, hip);
   const src = () => g.drawImage(simg, pose.i * sm.cw, 0, sm.cw, sm.ch, -sm.ax, -sm.ay, sm.cw, sm.ch);
   const sx = k === 0 ? 1 : (k === 2 ? -1 : 0.42), lift = (k % 2) ? -3 : 0;
   g.save();
@@ -702,20 +704,22 @@ function drawRunCycle(g, simg, sm, pose, k, hipK){
   g.restore();
   g.save();
   g.translate(0, lift);
-  g.beginPath(); g.rect(-sm.cw, -sm.ch, sm.cw * 2, sm.ch - hip + 2); g.clip();
+  g.beginPath(); g.rect(-sm.cw, -sm.ch, sm.cw * 2, sm.ch - hip); g.clip();
   src();
   g.restore();
 }
-function drawWalk(g, simg, sm, pose, ph, amp, lean, hipK){
-  // one body, drawn once: a step bob, a slight forward lean and a small sway. The old version copied the leg area
-  // once per leg, which showed a third (and fourth) leg on art whose two legs are already apart.
-  const sw = Math.sin(ph), lift = Math.abs(Math.cos(ph));
-  g.save();
-  g.translate(0, -lift * 2.4);
-  g.rotate(((lean === undefined ? 3 : lean) * 0.6 + sw * 1.6) * D2R);
-  g.scale(1 + lift * 0.012, 1 - lift * 0.018);
-  g.drawImage(simg, pose.i * sm.cw, 0, sm.cw, sm.ch, -sm.ax, -sm.ay, sm.cw, sm.ch);
-  g.restore();
+function drawWalk(g,simg,sm,pose,ph,amp,lean,hipK){
+  const parts=NinjaLimbs.parts(simg,sm,pose,pose.h*(hipK||.47));
+  const hip=parts.hip, hx=hipX(simg,sm,pose,hip),sw=Math.sin(ph),angle=sw*(amp||20)*D2R;
+  const drop=hip*(1-Math.cos(angle))*.5;
+  // A source pixel belongs to one leg or the torso, never two complete leg pairs.
+  for(const side of [-1,1]){
+    g.save();g.translate(hx,drop-hip);g.rotate(side*angle);g.translate(-hx,hip);
+    if(side<0)g.filter='brightness(.82)';
+    g.drawImage(parts.masks[side<0?1:2],-sm.ax,-sm.ay);g.restore();
+  }
+  g.save();g.translate(hx,drop-hip);g.rotate((lean===undefined?2:lean)*D2R);g.translate(-hx,hip);
+  g.drawImage(parts.masks[0],-sm.ax,-sm.ay);g.restore();
 }
 function composeChar(key, img){
   const m = ATLAS.meta[key], cw = m.cw, ch = m.ch, ax = m.ax, ay = m.ay, rs = m.res || 1;     // res 2 = sharper double-size art
@@ -1204,7 +1208,7 @@ function instNote(tr, hz, t, spb){
 }
 // ---- long stage music: streamed files beside the page (one per district + one for bosses) ----
 // Streaming keeps memory low on phones. If a file is missing (offline copy, claude.ai page), the embedded loop plays instead.
-const MUSIC_FILES = ['music/eiffel.mp3', 'music/louvre.mp3', 'music/notredame.mp3', 'music/montmartre.mp3', 'music/old-city.mp3'], BOSS_FILE = 'music/boss.mp3';
+const MUSIC_FILES = ['music/river-lanterns.mp3', 'music/louvre-whispers.mp3', 'music/cathedral-moon.mp3', 'music/montmartre-dawn.mp3', 'music/moonlit-rooftops.mp3', 'music/haifa-gardens.mp3'], BOSS_FILE = 'music/shadow-pulse.mp3';
 const ME = {};
 function meGet(url){
   if (ME[url]) return ME[url];
@@ -1381,9 +1385,9 @@ function setAnim(e, name, force){
   if (e.an === name && !force) return;
   e.an = name; e.af = 0; e.at = 0;
 }
-function stepAnim(e){
+function stepAnim(e,advance=1){
   const sh = SHEET[e.key][e.an];
-  e.at++;
+  e.at+=advance;
   if (e.at >= sh.hold[e.af]) {
     e.at = 0;
     if (e.af < sh.n - 1) e.af++;
@@ -1435,8 +1439,13 @@ function cycleWeap(p){
 // spawn a player projectile from (x, y) toward the unit direction (ax, ay)
 function spawnShot(p, sk, x, y, ax, ay){
   if (p && p.kind === 'player' && !p._spreading) { x = p.x + (x - p.x) * CHAR_GS; y = p.y + (y - p.y) * CHAR_GS; }   // shots leave the (larger) hand
+  if (!p._spreading) {
+    const muzzle = R3.muzzle(p);
+    if (muzzle) { x = muzzle.x; y = muzzle.y; }
+    if (solidHit({x:x-2,y:y-2,w:4,h:4}) || losBlocked(p.x,y,x)) return;
+  }
   const c = p.c, arrow = sk === 'arrow' || sk === 'fire' || sk === 'ice';
-  if (p.pwT > 0 && !p._spreading) {                             // power mode: regular shots become a 3-way volley; special ones a little stronger
+  if (p.pwT > 0 && p.activePower === 'fire' && !p._spreading) {                             // power mode: regular shots become a 3-way volley; special ones a little stronger
     const n0 = G.shots.length;
     if (sk === 'star' || sk === 'arrow') {
       p._spreading = true;
@@ -1569,7 +1578,7 @@ function gainEnergy(p, n){ p.en = Math.min(enMax(), (p.en || 0) + n); }
 const PW = { dur: 600, dmg: 1.5, kb: 1.3, rec: 0.85, scale: 1.22, spread: 9, gainHit: 5, gainVaried: 3, gainShot: 3, gainPerfect: 12, gainDodge: 8, specialK: 1.25 };
 const MOVES = {
   punch1: { anim: 'punch1', startup: 4, active: 3, rec: 7,  dmg: 6,  kb: 1.6, stun: 15, box: [10, -48, 25, 14], link: 'punch2' },
-  punch2: { anim: 'punch2', startup: 5, active: 3, rec: 8,  dmg: 7,  kb: 1.8, stun: 16, box: [10, -48, 27, 14], link: 'spinkick', linkFwd: 'grab' },
+  punch2: { anim: 'punch2', startup: 5, active: 3, rec: 8,  dmg: 7,  kb: 1.8, stun: 16, box: [10, -48, 27, 14], link: 'punch3', linkFwd: 'grab' },
   spinkick: { anim: 'spinkick', startup: 7, active: 5, rec: 15, dmg: 14, kb: 4.4, stun: 26, box: [-4, -56, 40, 30], heavy: 1, breaks: 1, lunge: 1.8, down: 1 },
   sweep:  { anim: 'sweep',  startup: 6, active: 4, rec: 13, dmg: 8,  kb: 1.4, stun: 34, box: [2, -18, 36, 16], down: 1, low: 1, breaks: 1, link: 'dragon' },
   punch3: { anim: 'punch3', startup: 7, active: 4, rec: 14, dmg: 13, kb: 4.6, stun: 24, box: [8, -60, 31, 26], down: 1, heavy: 1, lunge: 2.2 },
@@ -1987,6 +1996,7 @@ function onScreen(x, m){ return x > G.cam + (m || 0) && x < G.cam + VW - (m || 0
 // 10. player
 // ===================================================================
 function startMove(p, name){
+  p.moveSerial = (p.moveSerial || 0) + 1;
   p.state = 'attack'; p.move = name; p.mf = 0; p.hitList = []; p.nextCombo = null;
   setAnim(p, MOVES[name].anim, true);
   if (!MOVES[name].shoot) SFX.swing();
@@ -2271,6 +2281,8 @@ function playerLogic(p){
 }
 function groundAtSolid(x, y){ let g = 9999; for (const s2 of ST.solids) if (!s2.open && x >= s2.x - 5 && x <= s2.x + s2.w + 5 && s2.y >= y - 8 && s2.y < g) g = s2.y; return g; }
 function playerStep(p){
+  const beforeX = p.x, beforeY = p.y, wasAir = p.y < p.gy - .5;
+
   if(p.inp.P.up)p.jumpBuffer=7;else if(p.jumpBuffer>0)p.jumpBuffer--;
   p.gy = p.dropT > 0 ? groundAtSolid(p.x, p.y + 2) : groundAt(p.x, p.y);
   if (p.dropT > 0) p.dropT--;
@@ -2290,12 +2302,30 @@ function playerStep(p){
     if (p.stepAcc > 15) { p.stepAcc = 0; SFX.step(ST.plats.some(q => Math.abs(q.y - p.y) < 1.5 && p.x >= q.x - 3 && p.x <= q.x + q.w + 3)); }
   }
   if (p.state === 'climb' && (p.inp.H.up || p.inp.H.down) && G.tick % 14 === 0) SFX.climb();
-  stepAnim(p);
+  if(p.state==='run'&&Math.abs(p.x-beforeX)<.04)setAnim(p,'idle');
+  stepAnim(p,p.state==='run'?Math.min(2,Math.abs(p.x-beforeX)/Math.max(.1,p.c.speed)):1);
   // the player always stays inside the camera view
   if (p.x < G.cam + 10) p.x = G.cam + 10;
   if (p.x > G.cam + VW - 10) p.x = G.cam + VW - 10;
   if (p.state !== 'hang' && p.state !== 'pullup' && p.state !== 'climb' && p.y > p.gy) p.y = p.gy;
   if (p.alive && p.y > VH + 50) fallOut(p);
+  const landed = wasAir && p.y >= p.gy - .5 && p.vy >= 0;
+  if (landed) p.landT = 7; else if (p.landT > 0) p.landT--;
+  const dx = p.x-beforeX;
+  let state = !p.alive ? 'down' : p.state === 'hurt' || p.state === 'down' ? 'hurt' :
+    p.airShotT > 0 ? 'airshoot' : p.state === 'roll' ? 'roll' :
+    p.state === 'attack' ? (MOVES[p.move].shoot ? 'shoot' : /^punch[123]$/.test(p.move) ? p.move : 'kick') :
+    p.y < p.gy-.5 ? (p.vy < 0 ? 'jump' : 'fall') : p.state === 'crouch' ? 'crouch' :
+    p.state === 'block' ? 'block' : p.landT > 0 ? 'land' : Math.abs(dx) > p.c.speed*.8 ? 'run' : Math.abs(dx) > .08 ? 'walk' : 'idle';
+  p.motion = {state, dx, dy: p.y-beforeY, landed};
+  if (p.state === 'attack') {
+    const m=MOVES[p.move], startup=Math.max(2,m.startup+(m.shoot?0:p.c.startup));
+    const recovery=Math.max(4,Math.round(m.rec*(1-.12*upL('spd'))*(p.pwT>0?PW.rec:1)));
+    const phase=p.mf<=startup?'startup':p.mf<=startup+m.active?'active':'recovery';
+    const progress=phase==='startup'?p.mf/startup:phase==='active'?(p.mf-startup)/m.active:(p.mf-startup-m.active)/recovery;
+    Object.assign(p.motion,{phase, phaseProgress:Math.min(1,progress),startup,active:m.active,recovery});
+  }
+  R3.step(p);
 }
 
 // ===================================================================
@@ -3348,6 +3378,7 @@ function shotsStep(){
   for (let i = G.shots.length - 1; i >= 0; i--) {
     const s = G.shots[i];
     s.life--;
+    if(s.powerOrb){stepPowerOrb(s);if(s.life<=0||Math.abs(s.x-G.cam-VW/2)>VW)G.shots.splice(i,1);continue;}
     const px = s.x;
     if (s.boom) {                                              // returning star: out, slow, turn, home back to the thrower
       const o = s.owner;
@@ -3508,7 +3539,8 @@ function cameraStep(){
 function simulate(){
   G.tick++;
   comboStep();
-  if (stormStep()) { for (const q of G.players) stepAnim(q); return; }
+  powerStep();
+  stormStep();
   if (G.bossIntro > 0) {                                   // the boss walks in; everyone else waits
     G.bossIntro--;
     const b = G.boss;
@@ -3640,7 +3672,7 @@ function drawBrazier(px){
   }
 }
 function drawWorld(){
-  if (window.R3 && R3.on()) return;
+  
   if (ST.theme === 'city') { drawCity(); return; }
   const t = G.tick, cam = G.cam;
   blit(BG.sky, 0, 0, VW, VH, 0, 0);
@@ -3790,13 +3822,14 @@ function drawEntities(){
       cx.save(); cx.translate(gx, gy); cx.scale(1, 0.3); cx.translate(-gx, -gy); cx.fillStyle = gg; cx.beginPath(); cx.arc(gx, gy, 18, 0, 7); cx.fill(); cx.restore();
     }
     if (p.pwT > 0 && p.alive) {
-      const gx = p.x - G.cam, gy = p.y - 28, pc = p.key === 'red' ? '255,90,130' : '90,150,255', pul = 0.75 + 0.25 * Math.sin(G.tick * 0.3);
+      const gx = p.x - G.cam, gy = p.y - 28, pc = p.activePower === 'fire' ? '255,125,40' : p.activePower === 'clones' ? '180,130,255' : '90,180,255', pul = 0.75 + 0.25 * Math.sin(G.tick * 0.3);
       const ag = cx.createRadialGradient(gx, gy, 4, gx, gy, 40 * pul);
       ag.addColorStop(0, 'rgba(' + pc + ',.45)'); ag.addColorStop(1, 'rgba(' + pc + ',0)');
       cx.save(); cx.globalCompositeOperation = 'lighter'; cx.fillStyle = ag; cx.beginPath(); cx.arc(gx, gy, 40 * pul, 0, 7); cx.fill(); cx.restore();
     }
-    if (!in3) drawActor(p, p.out ? 0.4 : (p.inv > 0 && p.alive && p.state !== 'roll' && (G.tick >> 2) % 2 ? 0.45 : 1));
-    drawBatons(p);
+    if (!(in3 && p === G.player)) drawActor(p, p.out ? 0.4 : (p.inv > 0 && p.alive && p.state !== 'roll' && (G.tick >> 2) % 2 ? 0.45 : 1));
+    if (in3 && p === G.player) R3.draw();
+    else drawBatons(p);
     if (p.state === 'block') {
       cx.strokeStyle = 'rgba(159,232,255,' + (0.5 + 0.3 * Math.sin(G.tick * 0.3)).toFixed(2) + ')'; cx.lineWidth = 1.5;
       cx.beginPath(); cx.arc(p.x - G.cam + p.face * 4, p.y - 30, 17, p.face > 0 ? -1.1 : Math.PI - 1.1, p.face > 0 ? 1.1 : Math.PI + 1.1); cx.stroke();
@@ -3862,6 +3895,8 @@ function drawEntities(){
   if (G.boss) drawTell(G.boss);
   for (const s of G.shots) {
     const x = s.x - G.cam, y = s.y, d = Math.sign(s.vx);
+    if(s.powerOrb){drawPowerOrb(s);continue;}
+    if(s.fireStar){drawFireStar(s);continue;}
     if (s.kind === 'star') {
       cx.fillStyle = 'rgba(210,225,255,.3)'; cx.fillRect(x - d * 11, y - 0.7, 9, 1.4);
       if (s.boom || s.bolt) { cx.save(); cx.globalCompositeOperation = 'lighter'; cx.fillStyle = s.bolt ? 'rgba(160,200,255,.45)' : 'rgba(255,220,140,.35)'; cx.beginPath(); cx.arc(x, y, 8, 0, 7); cx.fill(); cx.restore(); }
@@ -4423,6 +4458,8 @@ document.getElementById('nBack').addEventListener('click', () => closeNames(fals
 
 
 function loadStage(i){
+  G.storm=null;G.slashes=[];
+  for(const p of G.players){p.powerCast=null;p.castT=0;}
   ST = STAGE_DEFS[i]();
   G.stage = i;
   G.foes = []; G.shots = []; G.parts = []; G.pickups = []; G.pops = [];
@@ -5278,7 +5315,9 @@ function drawCity(){
 // ===================================================================
 // 17. flow
 // ===================================================================
-function startRun(){
+function startRun(trial = false){
+  G.trial = trial;
+  G.cmb=null;
   G.runId++;
   G.player = makePlayer(G.charKey, 0);
   G.players = [G.player];
@@ -5295,7 +5334,7 @@ function startRun(){
   big('התחל!', 70);
   maybeTutorial();
   try { if (!localStorage.getItem('ns_moves1')) { localStorage.setItem('ns_moves1', '1');           // one-time hint for the new tricks
-    setTimeout(() => say('מהלכים חדשים: ריצה+בעיטה = בעיטה מעופפת · באוויר ↓+בעיטה = צלילה (קפיצה חוזרת!) · באוויר ↑+בעיטה = הוריקן · גריפה ואז התקפה = בעיטת דרקון', 480), 2600); } } catch (e) {}
+    setTimeout(() => {if(matchMedia('(pointer:coarse)').matches)return;say('מהלכים חדשים: ריצה+בעיטה = בעיטה מעופפת · באוויר ↓+בעיטה = צלילה (קפיצה חוזרת!) · באוויר ↑+בעיטה = הוריקן · גריפה ואז התקפה = בעיטת דרקון', 480);}, 2600); } } catch (e) {}
   G.scene = 'play';
   MUS.on = true; MUS.boss = false; MUS.step = 0; MUS.next = 0; MUS.tr = null;
   questInit();
@@ -5490,6 +5529,10 @@ let last = performance.now(), acc = 0;
 function frame(now){
   const rdt = Math.min(0.08, (now - last) / 1000);
   last = now;
+  const status=R3.hero?.status;
+  const statusText=R3.on()?'מודל זמני CC0 · חסרות אנימציות ייעודיות':S.r3?(status==='error'?'טעינת המודל נכשלה; המשחק ממשיך במצב המקורי':status==='loading'?'טוען מודל…':G.two?'תלת־ממד זמין לשחקן יחיד':'מודל מוכן'):'מצב ציור מקורי';
+  if(modelStatus.textContent!==statusText)modelStatus.textContent=statusText;
+  trialButton.hidden = G.scene !== 'title';
   musicTick();
   menuStep();
   if (G.scene === 'play') {
@@ -5512,7 +5555,7 @@ function frame(now){
   cx.setTransform(SC * RS, 0, 0, SC * RS, 0, 0);
   cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
   const r3 = window.R3 && R3.on();
-  if (r3) { cx.clearRect(0, 0, VW, VH); R3.render(G.scene === 'title' ? 'title' : (G.scene === 'select' || G.scene === 'name' ? 'select' : 'play')); }
+  if (r3) R3.render();
   if (G.scene === 'title') drawTitle();
   else if (G.scene === 'select' || G.scene === 'name') drawSelect();
   else if (G.scene === 'story') { drawWorld(); postFX(); cx.fillStyle = 'rgba(6,6,16,.4)'; cx.fillRect(0, 0, VW, VH); }
@@ -5520,7 +5563,7 @@ function frame(now){
     cx.save();
     cx.translate(Math.round(G.sx * SC) / SC, Math.round(G.sy * SC) / SC);
     cx.translate(0, -Math.round((G.camY || 0) * SC) / SC);
-    if (!r3) drawWorld();
+    drawWorld();
     drawEntities();
     cx.restore();
     postFX();
@@ -5560,446 +5603,11 @@ function frame(now){
 // Characters are original, built in code: a joint hierarchy (skeleton) with procedural,
 // blended animation. Placeholder art until sculpted, rigged GLB models replace them.
 // ===================================================================
-const R3 = (function(){
-  const R = { ready: false, rigs: new Map(), st: null, q: 2 };
-  let T, renderer, scene, camera, sun, rim, hemi, lamps = [], level = null, backdrop = null, water = null;
-  const FOV = 32, D = (VH / 2) / Math.tan(FOV * Math.PI / 360);
-  const D2 = Math.PI / 180;
-
-  // ---------- materials ----------
-  const MAT = {};
-  function std(col, rough, metal, extra){ return new T.MeshStandardMaterial(Object.assign({ color: col, roughness: rough === undefined ? 0.8 : rough, metalness: metal || 0 }, extra || {})); }
-  function woodCanvas(){
-    const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d');
-    for (let y = 0; y < 64; y += 16) {
-      const k = 0.85 + Math.random() * 0.25;
-      g.fillStyle = 'rgb(' + (120 * k | 0) + ',' + (78 * k | 0) + ',' + (44 * k | 0) + ')'; g.fillRect(0, y, 256, 15);
-      g.fillStyle = 'rgba(40,20,8,.6)'; g.fillRect(0, y + 15, 256, 1);
-      for (let i = 0; i < 26; i++) { g.fillStyle = 'rgba(60,32,14,' + (0.1 + Math.random() * 0.2) + ')'; g.fillRect(Math.random() * 256, y + Math.random() * 14, 20 + Math.random() * 60, 1); }
-    }
-    return c;
-  }
-  function tex(canvas, rx, ry){ const t = new T.CanvasTexture(canvas); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rx || 1, ry || 1); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return t; }
-  // box with UVs scaled to world size so textures tile instead of stretching
-  function tiledBox(w, h, d, tile){
-    const g = new T.BoxGeometry(w, h, d), uv = g.attributes.uv;
-    const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];      // px nx py ny pz nz
-    for (let f = 0; f < 6; f++) for (let v = 0; v < 4; v++) { const i = f * 4 + v; uv.setXY(i, uv.getX(i) * dims[f][0] / tile, uv.getY(i) * dims[f][1] / tile); }
-    return g;
-  }
-
-  // ---------- init ----------
-  R.init = function(){
-    if (R.ready || !window.THREE) return false;
-    T = window.THREE;
-    const host = document.querySelector('.screen');
-    const glc = document.createElement('canvas'); glc.id = 'gl'; glc.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block';
-    host.insertBefore(glc, host.firstChild);
-    cv.style.position = 'relative'; cv.style.zIndex = '1';
-    try { renderer = new T.WebGLRenderer({ canvas: glc, antialias: true, powerPreference: 'high-performance' }); }
-    catch (e) { glc.remove(); return false; }
-    renderer.outputEncoding = T.sRGBEncoding;
-    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
-    scene = new T.Scene();
-    camera = new T.PerspectiveCamera(FOV, VW / VH, 10, 4000);
-    hemi = new T.HemisphereLight(0xffc4a0, 0x2a2244, 0.45); scene.add(hemi);
-    sun = new T.DirectionalLight(0xffc890, 1.55); sun.castShadow = true;
-    sun.shadow.camera.left = -260; sun.shadow.camera.right = 260; sun.shadow.camera.top = 160; sun.shadow.camera.bottom = -160;
-    sun.shadow.camera.near = 10; sun.shadow.camera.far = 1400; sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.6;
-    scene.add(sun); scene.add(sun.target);
-    rim = new T.DirectionalLight(0x7a8cff, 0.75); scene.add(rim); scene.add(rim.target);
-    for (let i = 0; i < 3; i++) { const l = new T.PointLight(0xffb060, 1.2, 150, 2); scene.add(l); lamps.push(l); }
-    MAT.wood = std(0xffffff, 0.75, 0, { map: tex(woodCanvas(), 1, 1) });
-    MAT.iron = std(0x2a2a30, 0.45, 0.85);
-    MAT.lampGlass = new T.MeshStandardMaterial({ color: 0xffd7a0, emissive: 0xffaa55, emissiveIntensity: 1.6, roughness: 0.3 });
-    MAT.spike = std(0x8a8a96, 0.35, 0.9);
-    R.ready = true;
-    R.setQuality(S.q);
-    return true;
-  };
-  R.setQuality = function(q){
-    R.q = q;
-    if (!renderer) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-    renderer.setPixelRatio(q === 0 ? 0.6 : (q === 1 ? Math.min(1, dpr) : dpr));
-    renderer.shadowMap.enabled = q > 0;
-    sun.shadow.mapSize.set(q > 1 ? 2048 : 1024, q > 1 ? 2048 : 1024);
-    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
-    scene && scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
-    R.resize();
-  };
-  R.resize = function(){
-    if (!renderer) return;
-    const r = cv.getBoundingClientRect();
-    renderer.setSize(Math.max(2, r.width), Math.max(2, r.height), false);
-  };
-  window.addEventListener('resize', () => R.resize());
-
-  // ---------- level ----------
-  function buildLevel(st){
-    if (level) { scene.remove(level); level.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
-    level = new T.Group(); scene.add(level);
-    R.st = st; R.crates = []; R.lanterns = []; R.gates = [];
-    stonePattern(st.bg);                                     // bakes STONE_C[st.bg]
-    const stoneT = tex(STONE_C[st.bg]), stoneM = std(0xb8aca0, 0.92, 0, { map: stoneT, bumpMap: stoneT, bumpScale: 0.6 });
-    const capM = std(0x9a8a78, 0.9, 0, { map: stoneT });
-    const topT = tex(STONE_C[st.bg]); topT.repeat.set(1, 1);
-    const topM = std(0x6e625a, 0.95, 0, { map: topT, bumpMap: topT, bumpScale: 0.9 });
-    const mats6 = [stoneM, stoneM, topM, stoneM, stoneM, stoneM];
-    const ZB = -46, ZF = 26, DEP = ZF - ZB;                 // solids span this depth around the play line (z = 0)
-    for (const s of st.solids) {
-      const h = Math.min(s.h, 420), y0 = s.y;
-      const m = new T.Mesh(tiledBox(s.w, h, DEP, 40), mats6);
-      m.position.set(s.x + s.w / 2, -(y0 + h / 2), (ZB + ZF) / 2); m.castShadow = m.receiveShadow = true;
-      if (s.gate) { m.material = MAT.iron; m.scale.z = 0.4; R.gates.push({ s: s, m: m }); }
-      level.add(m);
-      if (y0 > 0 && !s.gate) {                               // worn coping stones along the walkable top
-        const c = new T.Mesh(new T.BoxGeometry(s.w + 1, 3.2, 4), capM);
-        c.position.set(s.x + s.w / 2, -y0 - 1.4, ZF); c.receiveShadow = true; c.castShadow = true; level.add(c);
-      }
-    }
-    for (const q of st.plats) {                              // timber decks, posts on scaffolds
-      const m = new T.Mesh(tiledBox(q.w, 4, 34, 40), MAT.wood);
-      m.position.set(q.x + q.w / 2, -q.y - 2, -4); m.castShadow = m.receiveShadow = true; level.add(m); q.mesh = m;
-      if (q.scaf) for (const px of [q.x + 4, q.x + q.w - 4]) for (const pz of [-18, 10]) {
-        const pole = new T.Mesh(new T.CylinderGeometry(1.4, 1.6, 232 - q.y, 8), MAT.wood);
-        pole.position.set(px, -(q.y + (232 - q.y) / 2), pz); pole.castShadow = true; level.add(pole);
-      }
-    }
-    for (const c of st.climbs || []) {                       // ladders: two rails and rungs, just behind the play line
-      const len = c.bot - c.top + 6, g = new T.Group();
-      for (const sx of [-6, 6]) { const r = new T.Mesh(new T.BoxGeometry(1.6, len, 1.6), MAT.wood); r.position.set(sx, 0, 0); g.add(r); }
-      for (let y = -len / 2 + 4; y < len / 2; y += 7) { const r = new T.Mesh(new T.CylinderGeometry(0.7, 0.7, 12, 6), MAT.wood); r.rotation.z = Math.PI / 2; r.position.y = y; g.add(r); }
-      g.position.set(c.x, -(c.top - 6 + len / 2), -8); g.traverse(o => { o.castShadow = true; }); level.add(g);
-    }
-    for (const sp of st.spikes) for (let x = sp.x + 4; x < sp.x + sp.w; x += 8) {
-      const m = new T.Mesh(new T.ConeGeometry(2.6, 9, 6), MAT.spike); m.position.set(x, -sp.y + 4.5, -2); level.add(m);
-    }
-    for (const c of st.crates) {
-      const m = new T.Mesh(new T.BoxGeometry(22, 22, 22), MAT.wood); m.position.set(c.x, -c.y + 11, -4); m.rotation.y = 0.2;
-      m.castShadow = m.receiveShadow = true; level.add(m); R.crates.push({ c: c, m: m });
-    }
-    for (const l of st.lanterns) {                           // Paris street lamps double as checkpoints
-      const g = new T.Group();
-      const pole = new T.Mesh(new T.CylinderGeometry(1.1, 1.8, 46, 10), MAT.iron); pole.position.y = 23; g.add(pole);
-      const head = new T.Mesh(new T.BoxGeometry(7, 9, 7), MAT.lampGlass.clone()); head.position.y = 50; g.add(head);
-      const cap = new T.Mesh(new T.ConeGeometry(6, 5, 4), MAT.iron); cap.position.y = 57; cap.rotation.y = Math.PI / 4; g.add(cap);
-      g.position.set(l.x, -l.y, -22); g.traverse(o => { o.castShadow = true; }); level.add(g); R.lanterns.push({ l: l, head: head });
-    }
-    // the river under every gap
-    if (st.water) {
-      water = new T.Mesh(new T.PlaneGeometry(st.w + 1200, 110, 1, 1), new T.MeshStandardMaterial({ color: 0x0c1626, roughness: 0.4, metalness: 0.15, emissive: 0x140c18, emissiveIntensity: 0.5 }));
-      water.rotation.x = -Math.PI / 2; water.position.set(st.w / 2, -248, -20); water.receiveShadow = true; level.add(water);
-    } else water = null;
-    // painted Paris backdrop, far behind, drifting slowly with the camera
-    const im = IMG[st.bg];
-    if (im) {
-      const bt = new T.Texture(im); bt.needsUpdate = true; bt.encoding = T.sRGBEncoding;
-      const Z = 900, hb = VH * (D + Z) / D * 1.08, wb = hb * im.width / im.height;
-      backdrop = new T.Mesh(new T.PlaneGeometry(wb, hb), new T.MeshBasicMaterial({ map: bt, fog: false, toneMapped: false, color: 0xd8d0d8 }));
-      backdrop.position.z = -Z; backdrop.userData = { wb: wb, hb: hb, Z: Z }; level.add(backdrop);
-    } else backdrop = null;
-    const gr = GRADE[st.bg] || { warm: '255,170,120', cool: '40,30,80' };
-    const wc = gr.warm.split(',').map(Number), cc = gr.cool.split(',').map(Number);
-    sun.color.setRGB(wc[0] / 255, wc[1] / 255, wc[2] / 255);
-    hemi.color.setRGB(wc[0] / 255, wc[1] / 255 * 0.9, wc[2] / 255 * 0.9); hemi.groundColor.setRGB(cc[0] / 255, cc[1] / 255, cc[2] / 255);
-    scene.fog = new T.Fog(new T.Color(wc[0] / 255 * 0.45, wc[1] / 255 * 0.35, wc[2] / 255 * 0.4), 700, 1500);
-  }
-
-  // ---------- characters ----------
-  // style sheet per character: proportions and colours (heads a little large, hands and feet chunky, Pixar-like)
-  const STYLE = {
-    blue:    { h: 54, cloth: 0x2a4ad8, dark: 0x16204a, sash: 0x5aa0ff, skin: 0xe2a882, hair: 0x14141c, build: 1.08, male: true, band: 0x6aa8ff },
-    red:     { h: 52, cloth: 0xd02a3e, dark: 0x401018, sash: 0xffc04a, skin: 0xf0b896, hair: 0x2a1410, build: 0.9, female: true, band: 0xff5a6a },
-    grunt:   { h: 50, cloth: 0x2e2238, dark: 0x16101c, sash: 0x8a3ad0, skin: 0xd8a080, hair: 0x101010, build: 1, hood: true },
-    thrower: { h: 49, cloth: 0x34363e, dark: 0x1a1a20, sash: 0xd03a3a, skin: 0xd8a080, hair: 0x101010, build: 0.92, hood: true },
-    archer:  { h: 51, cloth: 0x3c5a2c, dark: 0x1e2c16, sash: 0xb08a40, skin: 0xd8a080, hair: 0x101010, build: 0.95, hat: true },
-    boss:    { h: 80, cloth: 0x5a1a20, dark: 0x2a0a0e, sash: 0xd0a040, skin: 0xc89070, hair: 0x101010, build: 1.5, armor: true },
-    chain:   { h: 54, cloth: 0x2e3036, dark: 0x1c1d22, sash: 0x2a4a7a, skin: 0xa8785a, hair: 0x101014, build: 1.05, maskCol: 0x3a3a40, bracers: true },
-    ember:   { h: 52, cloth: 0x8a3020, dark: 0x2a2224, sash: 0xb04a2a, skin: 0xc89070, hair: 0x18120e, build: 0.98, male: true, maskCol: 0x3a2a26, bracers: true },
-    shadow:  { h: 90, cloth: 0xe8b41c, dark: 0x16161a, legs: 0xe0ac18, sash: 0x111114, skin: 0xd8a888, hair: 0x101014, build: 1.0, male: true, maskCol: 0x111114, bracers: true, silver: true },
-    warden:  { h: 84, cloth: 0x1e2236, dark: 0x101220, sash: 0x5a4030, skin: 0xb88a6a, hair: 0x101014, build: 1.6, armor: true, mask: true }
-  };
-  function limb(len, r0, r1, mat, cap){
-    const g = new T.Group();
-    const m = new T.Mesh(new T.CylinderGeometry(r1, r0, len, 12), mat); m.position.y = -len / 2; g.add(m);
-    if (cap !== false) { const s = new T.Mesh(new T.SphereGeometry(r0 * 1.02, 12, 10), mat); g.add(s); }
-    return g;
-  }
-  function makeRig(key){
-    const P = STYLE[key] || STYLE.grunt, k = P.h / 54, b = P.build;
-    const cloth = std(P.cloth, 0.78), dark = std(P.dark, 0.85), legs = P.legs ? std(P.legs, 0.8) : dark, sash = std(P.sash, 0.6), skin = std(P.skin, 0.55), hair = std(P.hair, 0.6);
-    const eyeW = std(0xffffff, 0.15), eyeK = std(0x111118, 0.1), metal = std(0x50525c, 0.38, 0.85);
-    const mats = [cloth, dark, sash, skin, hair, metal];
-    const J = {};
-    const root = new T.Group(), tumble = new T.Group(), yaw = new T.Group();
-    root.add(tumble); tumble.add(yaw);
-    const legLen = 22 * k, thighL = 11.5 * k, shinL = 10.5 * k;
-    tumble.position.y = legLen * 0.95; yaw.position.y = -legLen * 0.95;
-    const hips = new T.Group(); hips.position.y = legLen; yaw.add(hips);
-    const pelvis = new T.Mesh(new T.SphereGeometry(5.6 * k * b, 14, 10), dark); pelvis.scale.set(1.15, 0.75, 0.9); hips.add(pelvis);
-    J.root = root; J.tumble = tumble; J.yaw = yaw; J.hips = hips;
-    for (const sd of [-1, 1]) {
-      const th = limb(thighL, 3.4 * k * b, 2.8 * k * b, legs); th.position.set(sd * 3.6 * k * b, -1, 0); hips.add(th);
-      const sh = limb(shinL, 2.7 * k * b, 2.2 * k * b, legs); sh.position.y = -thighL; th.add(sh);
-      const wrap = new T.Mesh(new T.CylinderGeometry(2.45 * k * b, 2.3 * k * b, shinL * 0.5, 12), sash); wrap.position.y = -shinL * 0.62; sh.add(wrap);
-      const ft = new T.Group(); ft.position.y = -shinL; sh.add(ft);
-      const foot = new T.Mesh(new T.SphereGeometry(2.6 * k * b, 12, 8), hair); foot.scale.set(1, 0.62, 1.9); foot.position.set(0, -1.2, 2 * k); ft.add(foot);
-      J[sd < 0 ? 'thL' : 'thR'] = th; J[sd < 0 ? 'shL' : 'shR'] = sh; J[sd < 0 ? 'ftL' : 'ftR'] = ft;
-    }
-    const spine = new T.Group(); hips.add(spine);
-    const belly = new T.Mesh(new T.SphereGeometry(5.4 * k * b, 14, 12), cloth); belly.scale.set(1.05, 1.1, 0.88); belly.position.y = 4 * k; spine.add(belly);
-    const belt = new T.Mesh(new T.TorusGeometry(5.3 * k * b, 1.1 * k, 8, 20), sash); belt.rotation.x = Math.PI / 2; belt.scale.set(1.05, 0.88, 1); belt.position.y = 1.2 * k; spine.add(belt);
-    const chest = new T.Group(); chest.position.y = 8 * k; spine.add(chest);
-    const torso = new T.Mesh(new T.SphereGeometry(6.6 * k * b, 16, 12), cloth); torso.scale.set(1.12 * (P.female ? 0.92 : 1), 1.05, 0.84); torso.position.y = 3.6 * k; chest.add(torso);
-    const collar = new T.Mesh(new T.TorusGeometry(3.4 * k, 1 * k, 8, 16), dark); collar.rotation.x = Math.PI / 2; collar.position.y = 9 * k; chest.add(collar);
-    if (P.silver) { const st2 = new T.Mesh(new T.BoxGeometry(2.2 * k, 1.4 * k, 9 * k), std(0xc8c8d0, 0.5)); st2.position.set(-3 * k, 17 * k, 0); chest.add(st2); }
-    if (P.armor) {                                         // riveted shoulder plates and a chest strap
-      for (const sd of [-1, 1]) { const pl = new T.Mesh(new T.SphereGeometry(4.2 * k, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), metal); pl.scale.set(1.25, 0.8, 1.1); pl.position.set(sd * 7.8 * k * b * 0.75, 7.6 * k, 0); chest.add(pl); }
-      const strap = new T.Mesh(new T.BoxGeometry(3 * k, 13 * k, 12 * k), std(0x4a3424, 0.7)); strap.position.set(0, 3.6 * k, 0); strap.rotation.z = 0.5; chest.add(strap);
-    }
-    const neck = new T.Group(); neck.position.y = 9.4 * k; chest.add(neck);
-    const head = new T.Group(); head.position.y = 2.6 * k; neck.add(head);
-    const hs = 7.6 * k * (P.armor ? 0.82 : 1);                      // stylised: a generous head
-    const skull = new T.Mesh(new T.SphereGeometry(hs, 20, 16), skin); skull.position.y = hs * 0.95; skull.scale.set(0.95, 1, 0.98); head.add(skull);
-    // hood / hair / hat
-    if (P.hood) { const hd = new T.Mesh(new T.SphereGeometry(hs * 1.06, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), cloth); hd.position.y = hs * 0.95; hd.rotation.x = -0.25; head.add(hd); }
-    else { const hr = new T.Mesh(new T.SphereGeometry(hs * 1.04, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.5), hair); hr.position.y = hs * 1.0; hr.rotation.x = -0.35; head.add(hr);
-      if (P.male) for (let i = 0; i < 7; i++) { const sp = new T.Mesh(new T.ConeGeometry(1.6 * k, 4.2 * k, 6), hair); const a = -0.9 + i * 0.3; sp.position.set(Math.sin(a) * hs * 0.7, hs * 1.75, -Math.cos(a) * hs * 0.45 - 1); sp.rotation.set(-0.6, 0, -a * 0.6); head.add(sp); } }
-    if (P.hat) { const ht = new T.Mesh(new T.ConeGeometry(hs * 2.1, hs * 0.9, 20), std(0xd8b46a, 0.8)); ht.position.y = hs * 2.05; head.add(ht); }
-    // face: mask over the lower face, big expressive eyes, brows
-    const mask = new T.Mesh(new T.SphereGeometry(hs * 1.03, 18, 12, -Math.PI * 0.62, Math.PI * 1.24, Math.PI * 0.52, Math.PI * 0.42), P.mask ? metal : (P.maskCol ? std(P.maskCol, 0.7) : (P.hood ? cloth : dark)));
-    mask.position.y = hs * 0.95; head.add(mask);
-    const eyes = new T.Group(); eyes.position.set(0, hs * 1.06, hs * 0.78); head.add(eyes);
-    const brows = [];
-    for (const sd of [-1, 1]) {
-      const e = new T.Mesh(new T.SphereGeometry(hs * 0.25, 14, 10), eyeW); e.scale.set(0.9, 1.15, 0.5); e.position.x = sd * hs * 0.36; eyes.add(e);
-      const pu = new T.Mesh(new T.SphereGeometry(hs * 0.13, 10, 8), eyeK); pu.position.set(sd * hs * 0.34, -hs * 0.02, hs * 0.11); eyes.add(pu);
-      const hl = new T.Mesh(new T.SphereGeometry(hs * 0.045, 6, 6), eyeW); hl.position.set(sd * hs * 0.31 + hs * 0.05, hs * 0.06, hs * 0.2); eyes.add(hl);
-      const br = new T.Mesh(new T.BoxGeometry(hs * 0.42, hs * 0.09, hs * 0.1), hair); br.position.set(sd * hs * 0.36, hs * 0.32, hs * 0.08); eyes.add(br); brows.push(br);
-    }
-    // headband with two tails (cloth chain with springs)
-    const tails = [];
-    if (!P.hat && !P.mask) {
-      const band = new T.Mesh(new T.TorusGeometry(hs * 1.0, hs * 0.11, 8, 24), std(P.band || P.sash, 0.6)); band.rotation.x = Math.PI / 2 - 0.15; band.position.y = hs * 1.38; head.add(band);
-      for (const sd of [-1, 1]) tails.push(makeChain(head, new T.Vector3(sd * hs * 0.25, hs * 1.35, -hs * 0.95), 3, 4 * k, 0.9 * k, std(P.band || P.sash, 0.6)));
-    }
-    if (P.female) tails.push(makeChain(head, new T.Vector3(0, hs * 1.6, -hs * 0.8), 5, 4.2 * k, 2.4 * k, hair));     // ponytail
-    tails.push(makeChain(spine, new T.Vector3(3 * k, 1.2 * k, -5 * k), 3, 3.6 * k, 1.1 * k, sash));                      // sash tail
-    // arms
-    for (const sd of [-1, 1]) {
-      const sh = new T.Group(); sh.position.set(sd * 7.4 * k * b * (P.female ? 0.9 : 1), 7.2 * k, 0); chest.add(sh);
-      const ua = limb(8.6 * k, 2.5 * k * b, 2.1 * k * b, cloth); sh.add(ua);
-      const el = new T.Group(); el.position.y = -8.6 * k; ua.add(el);
-      const fa = limb(8 * k, 2.1 * k * b, 1.9 * k * b, P.armor || P.bracers ? metal : dark); el.add(fa);
-      const hand = new T.Mesh(new T.SphereGeometry(2.4 * k * b, 12, 10), P.armor ? metal : skin); hand.position.y = -8.6 * k; hand.scale.set(1, 1.1, 1); fa.add(hand);
-      J[sd < 0 ? 'saL' : 'saR'] = sh; J[sd < 0 ? 'elL' : 'elR'] = el; J[sd < 0 ? 'hL' : 'hR'] = hand;
-    }
-    // weapon props: a bow for the archer, a quiver on its back
-    if (key === 'archer') { const qv = new T.Mesh(new T.CylinderGeometry(1.8 * k, 1.5 * k, 12 * k, 8), std(0x6a4020, 0.7)); qv.position.set(-2, 4 * k, -5 * k); qv.rotation.x = 0.4; chest.add(qv); }
-    J.spine = spine; J.chest = chest; J.neck = neck; J.head = head; J.eyes = eyes; J.brows = brows; J.tails = tails;
-    root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
-    const rig = { J: J, mats: mats, key: key, legLen: legLen, k: k, phase: 0, land: 0, brake: 0, wasAir: false, lastVx: 0, blinkT: 2 + Math.random() * 3, t: Math.random() * 10, yaw: Math.PI / 2, alpha: 1 };
-    scene.add(root);
-    return rig;
-  }
-  function makeChain(parent, at, n, segLen, r, mat){
-    const base = new T.Group(); base.position.copy(at); parent.add(base);
-    const segs = []; let p = base;
-    for (let i = 0; i < n; i++) {
-      const g = new T.Group(); if (i) g.position.y = -segLen; p.add(g);
-      const m = new T.Mesh(new T.CylinderGeometry(r * (1 - i / (n + 1)) * 0.9, r * (1 - (i + 1) / (n + 1)), segLen, 8), mat); m.position.y = -segLen / 2; g.add(m);
-      segs.push({ g: g, a: 0, v: 0, az: 0, vz: 0 }); p = g;
-    }
-    return segs;
-  }
-
-  // ---------- procedural animation ----------
-  // targets are joint angles; every frame each joint glides toward its target (smooth blends between states)
-  const Z0 = { thL: 0, thR: 0, shL: 0, shR: 0, ftL: 0, ftR: 0, saL: 0, saR: 0, saLz: 0, saRz: 0, elL: 0, elR: 0, spine: 0, spineY: 0, chest: 0, neck: 0, hipsY: 0, tumble: 0 };
-  function pose(e, rig, dt){
-    const A = Object.assign({}, Z0), an = e.an, af = e.af || 0, J = rig.J;
-    const ground = e.y >= (e.gy === undefined ? e.y : e.gy) - 0.6;
-    const spd = Math.abs(e.vx || 0), run = Math.min(1, spd / 2.2);
-    let rate = 12, brow = 0, faceYaw = (e.face || 1) > 0 ? 1 : -1;
-    rig.t += dt;
-    // landing squash and braking lean (momentum)
-    if (ground && rig.wasAir) rig.land = Math.min(1, 0.4 + Math.min(1, (rig.fallV || 0) / 8));
-    rig.wasAir = !ground; if (!ground) rig.fallV = e.vy || 0;
-    rig.land = Math.max(0, rig.land - dt * 4);
-    const decel = Math.abs(rig.lastVx) - spd; rig.lastVx = e.vx || 0;
-    if (ground && decel > 0.25 && rig.lastSpd > 1.5) rig.brake = 1;
-    rig.lastSpd = spd; rig.brake = Math.max(0, rig.brake - dt * 3.5);
-    const L = rig.legLen;
-    // stride matched to ground speed: the phase advances by distance, so feet do not slide
-    const amp = 0.38 + 0.4 * run, stride = 4 * (L * 0.95) * Math.sin(amp);
-    if (ground && spd > 0.05) rig.phase += spd / Math.max(4, stride) * Math.PI * 2;
-    const ph = rig.phase, sp = Math.sin(ph), cp = Math.cos(ph);
-    const loco = () => {
-      A.thL = -amp * sp; A.thR = amp * sp;
-      A.shL = 0.25 + (0.6 + 0.9 * run) * Math.max(0, cp); A.shR = 0.25 + (0.6 + 0.9 * run) * Math.max(0, -cp);
-      A.saL = amp * 1.1 * sp; A.saR = -amp * 1.1 * sp; A.elL = -(0.35 + 0.9 * run); A.elR = -(0.35 + 0.9 * run);
-      A.spine = 0.08 + 0.22 * run; A.hipsY = -L * (0.03 + 0.05 * run) + Math.abs(cp) * L * 0.05 * run; A.spineY = 0.12 * sp * run;
-    };
-    const stance = () => {                                   // fighting stance with breathing
-      const br = Math.sin(rig.t * 2.4);
-      A.thL = -0.22; A.thR = 0.18; A.shL = 0.3; A.shR = 0.32; A.hipsY = -L * 0.06 + br * 0.25;
-      A.saL = -0.55; A.saR = -0.35; A.elL = -1.5; A.elR = -1.7; A.saLz = 0.15; A.saRz = -0.1;
-      A.spine = 0.06 + br * 0.015; A.chest = br * 0.02; A.neck = -0.05;
-    };
-    switch (an) {
-      case 'idle': case 'win': stance(); if (an === 'win') { A.saR = -2.6; A.elR = -0.3; } break;
-      case 'run': loco(); break;
-      case 'crouch': A.hipsY = -L * 0.38; A.thL = -1.25; A.thR = -0.9; A.shL = 2.1; A.shR = 1.9; A.spine = 0.45; A.saL = -0.7; A.saR = -0.5; A.elL = -1.6; A.elR = -1.7;
-        if (spd > 0.1) { A.thL += -0.3 * sp; A.thR += 0.3 * sp; } break;
-      case 'block': stance(); A.saL = -1.2; A.saR = -1.05; A.elL = -2.1; A.elR = -2.2; A.saLz = 0.35; A.saRz = -0.35; A.spine = -0.08; A.hipsY = -L * 0.1; rate = 22; break;
-      case 'jump': case 'gapjump': case 'walljump': A.thL = -1.2; A.shL = 1.7; A.thR = 0.35; A.shR = 0.9; A.saL = 0.9; A.saR = -0.6; A.elL = -0.6; A.elR = -1; A.spine = 0.2;
-        if (an === 'gapjump') { A.thL = -1.4; A.thR = 0.9; A.shR = 0.2; A.saL = 1.2; A.saR = -1.6; A.spine = 0.45; } break;
-      case 'fall': A.thL = -0.5; A.shL = 0.9; A.thR = 0.1; A.shR = 0.5; A.saL = -0.3; A.saR = 0.2; A.saLz = 1.0; A.saRz = -1.0; A.elL = -0.4; A.elR = -0.4; A.spine = 0.05; rate = 8; break;
-      case 'roll': A.tumble = -(rig.rollA = (rig.rollA || 0) + dt * 15); A.thL = -2.1; A.thR = -2.0; A.shL = 2.3; A.shR = 2.3; A.saL = -1.4; A.saR = -1.4; A.elL = -1.8; A.elR = -1.8; A.spine = 0.8; A.neck = 0.5; rate = 30; break;
-      case 'punch1': case 'punch2': {
-        const R_ = an === 'punch1' ? 'R' : 'L', O = R_ === 'R' ? 'L' : 'R';
-        stance(); A.thL = -0.45; A.thR = 0.35; A.shL = 0.45; A.hipsY = -L * 0.1; rate = 26; brow = 1;
-        if (af === 0) { A['sa' + R_] = 0.5; A['el' + R_] = -2.2; A.spineY = R_ === 'R' ? 0.35 : -0.35; }
-        else { A['sa' + R_] = -1.6; A['el' + R_] = -0.05; A['sa' + O] = -0.4; A['el' + O] = -2; A.spineY = R_ === 'R' ? -0.45 : 0.45; A.spine = 0.25; }
-        break; }
-      case 'punch3': case 'kick': stance(); rate = 24; brow = 1;
-        if (af === 0) { A.thR = -0.6; A.shR = 1.6; A.spine = -0.1; }
-        else { A.thR = -1.65; A.shR = 0.08; A.thL = 0.15; A.shL = 0.3; A.spine = -0.3; A.saL = 0.4; A.saR = -0.6; A.elL = -1.2; }
-        break;
-      case 'airthrow': A.thL = -1.1; A.shL = 1.6; A.thR = 0.3; A.shR = 0.8; A.saR = -1.5; A.elR = -0.1; A.saL = 0.6; A.elL = -0.8; A.spine = 0.1; rate = 26; brow = 1; break;
-      case 'airbow': A.thL = -1.0; A.shL = 1.5; A.thR = 0.35; A.shR = 0.9; A.saL = -1.55; A.elL = -0.05; A.saR = -1.4; A.elR = -2.0; A.spineY = 0.3; rate = 24; brow = 1; break;
-      case 'spinkick': stance(); rate = 26; brow = 1; A.spineY = af < 2 ? 2.6 : 0; if (af >= 2) { A.thR = -1.6; A.shR = 0.1; A.spine = -0.3; } break;
-      case 'sweep': A.hipsY = -L * 0.45; A.thR = -1.5; A.shR = 0.05; A.thL = -1.4; A.shL = 2.2; A.spine = 0.5; rate = 26; brow = 1; break;
-      case 'flip': case 'backflip': A.tumble = (an === 'flip' ? -1 : 1) * (rig.flipA = (rig.flipA || 0) + dt * 14); A.thL = -2.0; A.thR = -2.0; A.shL = 2.2; A.shR = 2.2; A.saL = -1.2; A.saR = -1.2; A.elL = -1.6; A.elR = -1.6; A.spine = 0.6; rate = 30; break;
-      case 'airkick': A.thR = -1.5; A.shR = 0.1; A.thL = -0.6; A.shL = 1.8; A.spine = -0.35; A.saL = 0.6; A.saR = -0.9; A.elL = -1; rate = 26; brow = 1; break;
-      case 'throw': case 'throwS': stance(); rate = 24; brow = 1;
-        if (af === 0) { A.saR = 2.4; A.elR = -1.2; A.spineY = 0.4; A.spine = -0.1; }
-        else { A.saR = -1.5; A.elR = -0.1; A.spineY = -0.4; A.spine = 0.25; A.thL = -0.45; } break;
-      case 'bow': case 'bowrel': stance(); rate = 18; brow = 1;
-        A.saL = -1.55; A.elL = -0.05; A.saR = -1.45; A.elR = an === 'bow' ? -2.4 : -0.6; A.spineY = 0.35; A.thL = -0.4; A.thR = 0.3; break;
-      case 'hurt': stance(); A.spine = -0.45; A.neck = -0.5; A.saL = 0.6; A.saR = 0.8; A.saLz = 0.6; A.saRz = -0.6; A.elL = -0.3; A.elR = -0.3; A.hipsY = -L * 0.12; rate = 28; brow = 2; break;
-      case 'down': A.tumble = (e.alive === false ? 1.45 : 1.25); A.thL = -0.3; A.thR = 0.1; A.saL = 0.9; A.saR = 1.4; A.saLz = 0.8; A.saRz = -0.8; A.neck = -0.3; A.hipsY = -L * 0.35; rate = 10; brow = 2; break;
-      case 'hang': A.saL = -3.0; A.saR = -3.0; A.elL = -0.15; A.elR = -0.15; A.thL = -0.2 + 0.1 * Math.sin(rig.t * 2); A.thR = 0.1 - 0.1 * Math.sin(rig.t * 2); A.shL = 0.3; A.shR = 0.4; rate = 14; break;
-      case 'pullup': A.saL = -1.4; A.saR = -1.4; A.elL = -1.8; A.elR = -1.8; A.thL = -1.6; A.shL = 1.8; A.thR = -0.6; A.shR = 1.2; A.spine = 0.5; rate = 16; break;
-      case 'cling': A.saL = -2.4; A.elL = -0.6; A.saR = -1.4; A.elR = -1.2; A.thL = -0.8; A.shL = 1.2; A.thR = -0.2; A.shR = 0.8; A.spine = -0.15; break;
-      case 'climb': { const c2 = Math.sin(rig.t * 9) * (e.inp && (e.inp.H.up || e.inp.H.down) ? 1 : 0);
-        A.saL = -2.6 - 0.35 * c2; A.saR = -2.6 + 0.35 * c2; A.elL = -0.6; A.elR = -0.6; A.thL = -0.7 + 0.5 * c2; A.thR = -0.7 - 0.5 * c2; A.shL = 1; A.shR = 1; rate = 16; break; }
-      // Iron Warden poses (after the reference sheet)
-      case 'windup': A.spine = -0.45; A.saR = 1.1; A.elR = -0.6; A.saL = -0.4; A.saLz = 0.5; A.thL = -0.5; A.shL = 0.5; A.thR = 0.45; A.hipsY = -L * 0.12; A.neck = -0.35; brow = 1; rate = 10; break;
-      case 'charge': loco(); A.spine = 0.75; A.saL = -0.9; A.elL = -1.6; A.saR = 0.6; A.elR = -1.2; A.neck = 0.3; brow = 1; rate = 18; break;
-      case 'punchTell': stance(); A.saR = 0.9; A.elR = -2; A.spineY = 0.4; A.spine = -0.15; brow = 1; rate = 14; break;
-      case 'punch': stance(); A.saR = -1.6; A.elR = -0.05; A.spineY = -0.5; A.spine = 0.3; A.thL = -0.6; A.shL = 0.6; A.thR = 0.5; brow = 1; rate = 24; break;
-      case 'sweep': A.hipsY = -L * 0.25; A.thL = -0.9; A.shL = 0.9; A.thR = 0.7; A.shR = 0.4; A.saR = -1.2; A.elR = -0.1; A.saL = 0.8; A.spine = 0.45; A.spineY = -0.6; brow = 1; rate = 26; break;
-      case 'shot': stance(); A.saL = -1.55; A.elL = -0.05; A.saR = -1.45; A.elR = -2.3; A.spineY = 0.35; A.thL = -0.6; A.thR = 0.55; A.hipsY = -L * 0.15; brow = 1; rate = 18; break;
-      case 'reload': A.hipsY = -L * 0.3; A.thL = -1.2; A.shL = 1.5; A.thR = 0.2; A.shR = 1.6; A.spine = 0.5; A.saR = 0.6; A.elR = -1.6; A.saL = -0.8; A.elL = -0.4; rate = 12; break;
-      case 'volley': stance(); A.thL = -0.75; A.thR = 0.7; A.hipsY = -L * 0.2; A.saR = -1.55; A.elR = -0.05; A.saL = 0.7; A.elL = -0.4; A.spineY = -0.45; A.spine = 0.15; brow = 1; rate = 24; break;
-      case 'leap': A.thL = -1.3; A.shL = 1.6; A.thR = 0.9; A.shR = 0.4; A.saL = -1.2; A.elL = -0.3; A.saR = 1.1; A.elR = -0.5; A.spine = 0.35; brow = 1; rate = 14; break;
-      case 'landing':
-      case 'recover': A.hipsY = -L * 0.45; A.thL = -1.6; A.shL = 1.65; A.thR = 0.35; A.shR = 2.1; A.spine = 0.7; A.saL = -0.3; A.elL = -1.3; A.saR = -0.9; A.elR = -0.4; A.neck = 0.3; brow = 2; rate = 9; break;
-      default: stance();
-    }
-    // the knee bends into a landing and the body leans back when braking
-    if (rig.land > 0) { A.hipsY -= L * 0.22 * rig.land; A.thL -= 0.55 * rig.land; A.thR -= 0.45 * rig.land; A.shL += 1.1 * rig.land; A.shR += 1.0 * rig.land; A.spine += 0.25 * rig.land; }
-    if (rig.brake > 0 && (an === 'idle' || an === 'run')) { A.spine -= 0.35 * rig.brake; A.thL -= 0.5 * rig.brake; A.shL += 0.2 * rig.brake; }
-    // apply with smoothing
-    const k = 1 - Math.exp(-rate * dt);
-    const go = (o, prop, v) => { o[prop] += (v - o[prop]) * k; };
-    go(J.thL.rotation, 'x', A.thL); go(J.thR.rotation, 'x', A.thR);
-    go(J.shL.rotation, 'x', A.shL); go(J.shR.rotation, 'x', A.shR);
-    go(J.ftL.rotation, 'x', -(A.thL + A.shL) * 0.85); go(J.ftR.rotation, 'x', -(A.thR + A.shR) * 0.85);
-    go(J.saL.rotation, 'x', A.saL); go(J.saR.rotation, 'x', A.saR); go(J.saL.rotation, 'z', -A.saLz - 0.12); go(J.saR.rotation, 'z', -A.saRz + 0.12);
-    go(J.elL.rotation, 'x', A.elL); go(J.elR.rotation, 'x', A.elR);
-    go(J.spine.rotation, 'x', A.spine); go(J.spine.rotation, 'y', A.spineY); go(J.chest.rotation, 'x', A.chest); go(J.neck.rotation, 'x', A.neck);
-    go(J.hips.position, 'y', L + A.hipsY);
-    if (an === 'roll') J.tumble.rotation.z = A.tumble * faceYaw; else go(J.tumble.rotation, 'z', A.tumble * faceYaw);
-    if (an !== 'roll') rig.rollA = 0;
-    // facing: turn smoothly (3/4 toward the camera); climbing shows the back
-    const yawT = an === 'climb' ? Math.PI : (faceYaw > 0 ? Math.PI / 2 - 0.38 : -Math.PI / 2 + 0.38);
-    let dy = yawT - J.yaw.rotation.y; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2;
-    J.yaw.rotation.y += dy * (1 - Math.exp(-14 * dt));
-    // face: brows (0 calm, 1 fierce, 2 pained) and blinking
-    const bz = brow === 1 ? 0.35 : (brow === 2 ? -0.3 : 0);
-    J.brows.forEach((b, i) => { const sd = i ? 1 : -1; b.rotation.z += (bz * sd - b.rotation.z) * 0.25; });
-    rig.blinkT -= dt; const blink = rig.blinkT < 0.12; if (rig.blinkT < 0) rig.blinkT = 2.5 + Math.random() * 3;
-    J.eyes.scale.y += ((blink || brow === 2 ? 0.25 : 1) - J.eyes.scale.y) * 0.5;
-    // secondary motion: cloth tails and ponytail trail behind movement
-    const vx = (e.vx || 0) * faceYaw, vy = e.vy || 0;
-    for (const chain of J.tails) chain.forEach((s, i) => {
-      const tgt = Math.max(-1.2, Math.min(1.4, 0.15 + vx * 0.28 + (ground ? 0 : -vy * 0.06) + Math.sin(rig.t * 3 + i) * 0.06));
-      s.v += (tgt - s.a) * 0.18 - s.v * 0.2; s.a += s.v; s.g.rotation.x = -s.a * (i ? 0.6 : 1) - 0.5;
-    });
-  }
-  function rigFor(e){
-    let r = R.rigs.get(e);
-    if (!r) { r = makeRig(e.key); R.rigs.set(e, r); }
-    return r;
-  }
-
-  // ---------- frame ----------
-  let lastT = performance.now();
-  R.render = function(mode){
-    if (!R.ready) return;
-    const now = performance.now(), dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-    if (R.st !== ST) buildLevel(ST);
-    const camX = G.cam + VW / 2 - (G.sx || 0), camY = -VH / 2 - (G.camY || 0) + (G.sy || 0);
-    camera.position.set(camX, camY, D); camera.lookAt(camX, camY, 0);
-    // live entities -> rigs
-    const ents = [];
-    if (mode === 'select') {
-      const sel = G.selIdx;
-      for (let i = 0; i < 2; i++) {
-        const key = i ? 'red' : 'blue';
-        R.selEnt = R.selEnt || [{ key: 'blue' }, { key: 'red' }];
-        const e = R.selEnt[i]; Object.assign(e, { key: key, x: G.cam + VW / 2 + (i ? 72 : -72), y: 196, gy: 196, vx: 0, vy: 0, face: i ? -1 : 1, an: sel === i ? ['idle', 'punch1', 'kick', 'throw', 'idle'][(G.tick / 50 | 0) % 5] : 'idle', af: ((G.tick % 50) / 9 | 0) > 0 ? 1 : 0, alive: true });
-        ents.push(e);
-      }
-    } else if (mode !== 'title') {
-      for (const p of G.players) ents.push(p);
-      for (const f of G.foes) ents.push(f);
-      if (G.boss) ents.push(G.boss);
-    }
-    const live = new Set(ents);
-    for (const [e, r] of R.rigs) if (!live.has(e)) { scene.remove(r.J.root); R.rigs.delete(e); }
-    for (const e of ents) {
-      const r = rigFor(e);
-      r.J.root.position.set(e.x, -e.y, mode === 'select' ? 40 : 0);
-      r.J.root.scale.setScalar(mode === 'select' ? 1.75 : 1);
-      if (G.scene === 'play' || mode === 'select') pose(e, r, dt);
-      // hit flash, death fade, mercy blink
-      const fl = e.flashT > 0 ? 0.9 : 0;
-      for (const m of r.mats) { m.emissive.setRGB(fl, fl, fl); }
-      let a = 1;
-      if (e.alive === false) a = e.kind === 'boss' ? Math.min(1, e.deadT / 30) : Math.min(1, e.deadT / 16);
-      if (e.out) a = 0.4;
-      if (e.inv > 0 && e.alive && e.state !== 'roll' && (G.tick >> 2) % 2) a = Math.min(a, 0.5);
-      if (a !== r.alpha) { r.alpha = a; for (const m of r.mats) { m.transparent = a < 1; m.opacity = a; } }
-      r.J.root.visible = a > 0.02;
-    }
-    // world state
-    for (const q of R.st.plats) if (q.sp && q.mesh) q.mesh.position.x = q.x + q.w / 2;
-    for (const c of R.crates || []) c.m.visible = !c.c.broken;
-    for (const g of R.gates || []) g.m.visible = !g.s.open;
-    for (const l of R.lanterns || []) l.head.material.emissiveIntensity = l.l.lit ? 2.6 : 0.6;
-    // nearest lamps get the real point lights
-    const near = (R.lanterns || []).slice().sort((a, b) => Math.abs(a.l.x - camX) - Math.abs(b.l.x - camX));
-    lamps.forEach((pl, i) => { const n = near[i]; if (n) { pl.position.set(n.l.x, -n.l.y + 50, -14); pl.intensity = n.l.lit ? 1.6 : 0.5; } else pl.intensity = 0; });
-    if (backdrop) {
-      const u = backdrop.userData, prog = Math.max(0, Math.min(1, G.cam / Math.max(1, R.st.w - VW))), viewW = (VH * (D + u.Z) / D) * VW / VH;
-      backdrop.position.x = camX - (prog - 0.5) * Math.max(0, u.wb - viewW);
-      backdrop.position.y = camY + (u.hb - VH * (D + u.Z) / D) * 0.18;
-    }
-    if (water) water.position.x = camX;
-    const gr = GRADE[R.st.bg] || { lx: 0.8 };
-    sun.position.set(camX + (gr.lx - 0.5) * 900, 380, 420); sun.target.position.set(camX, -170, 0);
-    rim.position.set(camX - (gr.lx - 0.5) * 700, 120, -500); rim.target.position.set(camX, -170, 0);
-    renderer.render(scene, camera);
-  };
-  R.on = function(){ return R.ready && S.r3 !== false && ST && ST.r3; };
-  return R;
-})();
-window.R3 = R3;
+// Compatibility adapter for the archived GLB experiment. The current release
+// uses the original 2D art and creates no WebGL renderer or model downloads.
+const R3={ready:false,hero:null,metrics:{},init:()=>false,on:()=>false,
+  setQuality(){},resize(){},step(){},muzzle(){return null;},render(){},draw(){}};
+window.R3=R3;
 
 // ===================================================================
 // 18. settings UI + boot
@@ -6207,8 +5815,238 @@ drawHud=function(){baseHud();if(!G.player)return;cx.save();cx.font='700 6px Heeb
 const baseMenuStep=menuStep;
 menuStep=function(){baseMenuStep();if(G.scene!=='play'||!ST.city)missionBtn.hidden=true;};
 
-window.__yoru = { G: G, actionNear: actionNear, doAction: doAction, actionUi: actionUi, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, navReach: navReach, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, navMove: navMove, navOk: navOk, cameraStep: cameraStep, powerTier: powerTier, completeCityMission: completeCityMission, cityMissions: CITY_MISSIONS, alertStep: alertStep, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
-loadSprites().then(() => { try { if (window.THREE) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
+function startMotionTrial(){
+  G.two=false; startRun(true); loadStage(4); G.scene='play'; S.r3=true;
+  ST.ambushes=[]; // Isolate the short stair/combat trial from campaign camera locks.
+  const p=G.player; p.x=4210; p.y=p.gy=232; p.inv=120;
+  G.cam=4000; G.camMin=0; G.bigT=0; G.msgT=0;
+  const foe=makeFoe('grunt',4270);foe.y=foe.gy=232;foe.cd=150;
+  G.foes=[foe]; G.trial=true; elR3.checked=true;
+  say('ניסוי תנועה · רובוט זמני CC0 · מדרגות מימין · Z קומבו · רווח ירי · Esc השהיה',600);
+}
+const trialButton=document.createElement('button'); trialButton.textContent='ניסוי תנועה · GLB זמני';
+trialButton.id='motionTrial'; trialButton.style.cssText='position:fixed;bottom:8px;left:8px;z-index:30;font:14px sans-serif;padding:8px;border-radius:8px';
+const modelStatus=document.createElement('span'); modelStatus.id='modelStatus'; modelStatus.style.cssText='font-size:12px;color:#a8b5cd;margin:0 8px';elR3.parentElement.after(modelStatus);
+trialButton.onclick=()=>{trialButton.hidden=true;startMotionTrial();}; document.body.appendChild(trialButton);
+// Original 2D ninjas, three selectable techniques, fixed-step VFX and damage.
+const NINJA_POWERS = {
+  wave: {name:'גל צ׳י', icon:'◉', color:'#77dcff', detail:'מכת אנרגיה מהיד'},
+  fire: {name:'כוכבי אש', icon:'✦', color:'#ffad60', detail:'מטח אש וכוכבים בוערים'},
+  clones: {name:'כפילי צל', icon:'影', color:'#c4a1ff', detail:'כפילים מסתערים על אויבים'}
+};
+if(!S.originalNinjasV2){S.r3=false;S.originalNinjasV2=true;saveS();}
+PW.scale=1; // Techniques change combat; they do not enlarge the character.
+function selectedPower(p){return NINJA_POWERS[p?.powerChoice||S.powerChoice] ? (p?.powerChoice||S.powerChoice) : 'wave';}
+function techniqueTargets(){return G.boss&&G.boss.alive?G.foes.concat([G.boss]):G.foes;}
+function clearPowerPath(x0,y0,x1,y1){
+  const count=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/5));
+  for(let i=1;i<=count;i++){const k=i/count,x=x0+(x1-x0)*k,y=y0+(y1-y0)*k;if(solidHit({x:x-2,y:y-2,w:4,h:4})||(ST.blockers||[]).some(b=>x>=b.x0-2&&x<=b.x1+2&&y>=b.y0-2&&y<=b.y1+2))return false;}
+  return true;
+}
+function powerSmoke(x,y,color,count=8){
+  for(let i=0;i<count;i++){const a=i/count*Math.PI*2;G.parts.push({x,y:y-24,vx:Math.cos(a)*(1+i%3*.4),vy:Math.sin(a)*1.2-.4,life:20,max:20,col:color,g:-.01,sz:2.5});}
+}
+activatePower=function(p){
+  if(!p||!p.alive||p.pwT>0||(p.pw||0)<100||G.scene!=='play'||/^(hurt|down|hang|climb|pullup)$/.test(p.state))return false;
+  const level=powerTier(),tier=POWER_TIERS[level],type=selectedPower(p);
+  p.powerChoice=type;p.activePower=type;p.powerTier=level;p.powerDuration=tier.duration;p.pwT=tier.duration;
+  p.powerCast={type,t:0,face:p.face};p.castT=18;p.state='focus';p.vx=0;p.sc=1;
+  p.inv=Math.max(p.inv,18);setAnim(p,'palm',true);
+  SFX.power();trauma(.12);big(NINJA_POWERS[type].name+'!',65);
+  powerSmoke(p.x,p.y,NINJA_POWERS[type].color,12);return true;
+};
+const techniquePlayerLogic=playerLogic;
+playerLogic=function(p){
+  if(p.castT>0&&p.alive&&!/^(hurt|down)$/.test(p.state)){
+    if(p.inv>0)p.inv--;if(p.shootCd>0)p.shootCd--;
+    p.castT--;p.state='focus';p.vx*=.8;p.x+=p.vx;
+    if(p.y<p.gy||p.vy<0){p.vy+=GRAV;p.y=Math.min(p.gy,p.y+p.vy);if(p.y===p.gy)p.vy=0;}
+    if(p.pwT>0)p.pwT--;p.pw=100*p.pwT/(p.powerDuration||PW.dur);
+    if(!p.castT){p.state=p.y<p.gy?'jump':'idle';setAnim(p,p.state==='jump'?'fall':'idle',true);}
+    return;
+  }
+  if(/^(hurt|down)$/.test(p.state)){p.castT=0;p.powerCast=null;}
+  techniquePlayerLogic(p);
+};
+function releaseTechnique(p,type){
+  const x=p.x+p.face*27*CHAR_GS,y=p.y-38*CHAR_GS;
+  if(type==='wave'){
+    if(clearPowerPath(p.x,p.y-30,x,y))G.shots.push({kind:'powerOrb',powerOrb:true,x,y,vx:p.face*6.8,vy:0,life:75,age:0,dmg:28+8*p.powerTier,hit:[],owner:p,from:'p',pierce:3});
+    SFX.bow();trauma(.14);
+  }else if(type==='fire'){
+    // Existing spread code emits three stars; no ammo is consumed by the charged cast.
+    spawnShot(p,'star',p.x+p.face*20,p.y-38,p.face,0);SFX.fire();
+  }else shadowStorm(p);
+  powerSmoke(x,y,NINJA_POWERS[type].color,8);
+}
+function powerStep(){
+  for(const p of G.players){
+    const cast=p.powerCast;if(!cast)continue;
+    if(!p.alive||/^(hurt|down)$/.test(p.state)){p.powerCast=null;p.castT=0;continue;}
+    if(++cast.t===10){releaseTechnique(p,cast.type);p.powerCast=null;}
+  }
+  G.slashes=(G.slashes||[]).filter(sl=>--sl.t>0);
+}
+shadowStorm=function(p){
+  const list=techniqueTargets().filter(f=>f.alive&&!f.emerge&&f.kind!=='echodup'&&onScreen(f.x,-12)&&Math.abs(f.y-p.y)<85&&clearPowerPath(p.x,p.y-30,f.x,f.y-30)).slice(0,6);
+  const clones=list.map((target,i)=>({target,delay:i*5,age:0,done:false,x0:p.x,y0:p.y,x:p.x,y:p.y,key:p.key,face:Math.sign(target.x-p.x)||p.face,an:'run',af:i%4,at:0,vx:4,sc:1}));
+  G.storm={p,clones,t:0,dur:50+Math.max(0,clones.length-1)*5};
+  powerSmoke(p.x,p.y,'#b198f4',16);
+  if(!list.length)pop(p.x,p.y-70,'אין אויב בטווח פתוח','#c4a1ff');
+};
+stormStep=function(){
+  const storm=G.storm;if(!storm)return false;
+  storm.t++;
+  for(const clone of storm.clones){
+    if(storm.t<=clone.delay)continue;
+    clone.age++;
+    const target=clone.target, k=Math.min(1,clone.age/14),ease=1-Math.pow(1-k,2);
+    const tx=target.x-clone.face*23;
+    clone.x=clone.x0+(tx-clone.x0)*ease;clone.y=clone.y0+(target.y-clone.y0)*ease-Math.sin(k*Math.PI)*10;
+    clone.an=clone.age<12?'run':'punch1';clone.af=clone.age<12?(clone.age/3|0)%4:Math.min(2,(clone.age-12)/3|0);
+    if(clone.age===16&&!clone.done){
+      clone.done=true;
+      if(target.alive&&!target.emerge&&clearPowerPath(clone.x0,clone.y0-30,target.x,target.y-30)){
+        const dmg=target.kind==='boss'?24+storm.p.powerTier*6:40+storm.p.powerTier*8;
+        damageFoe(target,dmg,clone.face,{kb:3,stun:30,heavy:1,breaks:1,down:target.kind!=='boss'},target.x,target.y-34,storm.p,clone.face);
+        G.slashes.push({x:target.x,y:target.y-32,t:14,a:clone.face*.3});comboHit(storm.p,'clones');SFX.hitHeavy();
+      }
+    }
+    if(clone.age===27)powerSmoke(clone.x,clone.y,'#9b85d0',5);
+  }
+  if(storm.t>=storm.dur)G.storm=null;
+  return false; // The player/world keep their ordinary collision simulation.
+};
+function stepPowerOrb(s){
+  s.age++;
+  const count=Math.ceil(Math.hypot(s.vx,s.vy)/4);
+  for(let i=0;i<count&&s.life>0;i++){
+    s.x+=s.vx/count;s.y+=s.vy/count;
+    if(solidHit({x:s.x-5,y:s.y-5,w:10,h:10})||losBlocked(s.x-s.vx/count,s.y,s.x)){s.life=0;impact(s.x,s.y,false);break;}
+    for(const f of techniqueTargets()){
+      if(!f.alive||f.emerge||s.hit.includes(f)||!overlap({x:s.x-10,y:s.y-10,w:20,h:20},hurtBox(f)))continue;
+      s.hit.push(f);damageFoe(f,s.dmg,Math.sign(s.vx),{kb:4,stun:28,heavy:1,breaks:1,proj:1},s.x,s.y,s.owner,Math.sign(s.vx));
+      comboHit(s.owner,'chi');if(--s.pierce<=0)s.life=0;
+    }
+  }
+  if(s.age%3===0)G.parts.push({x:s.x-Math.sign(s.vx)*8,y:s.y,vx:-s.vx*.12,vy:(s.age%2?1:-1)*.2,life:10,max:10,col:'#7fe2ff',g:0,sz:3});
+}
+const techniqueSpawnShot=spawnShot;
+spawnShot=function(p,...args){
+  const start=G.shots.length,result=techniqueSpawnShot(p,...args);
+  if(p&&p.pwT>0&&p.activePower==='fire')for(let i=start;i<G.shots.length;i++){
+    const s=G.shots[i];if(s.kind==='star'&&!s.fireStar){s.fire=1;s.fireStar=true;s.owner=p;s.dmg*=1.25;}
+  }
+  return result;
+};
+function drawPowerOrb(s){
+  const x=s.x-G.cam,y=s.y,dir=Math.sign(s.vx),pulse=1+Math.sin(s.age*.6)*.08;
+  cx.save();cx.globalCompositeOperation='lighter';
+  const tail=cx.createLinearGradient(x-dir*42,y,x,y);tail.addColorStop(0,'rgba(40,140,255,0)');tail.addColorStop(1,'rgba(80,210,255,.8)');
+  cx.fillStyle=tail;cx.beginPath();cx.moveTo(x-dir*42,y);cx.quadraticCurveTo(x-dir*15,y-12,x,y-9);cx.lineTo(x,y+9);cx.quadraticCurveTo(x-dir*15,y+12,x-dir*42,y);cx.fill();
+  const glow=cx.createRadialGradient(x,y,1,x,y,18);glow.addColorStop(0,'rgba(235,255,255,1)');glow.addColorStop(.4,'rgba(100,225,255,.9)');glow.addColorStop(1,'rgba(40,120,255,0)');cx.fillStyle=glow;cx.beginPath();cx.ellipse(x,y,19*pulse,15*pulse,0,0,Math.PI*2);cx.fill();
+  cx.strokeStyle='#d5ffff';cx.lineWidth=1.2;cx.beginPath();cx.arc(x,y,9*pulse,s.age*.4,s.age*.4+4.6);cx.stroke();cx.restore();
+}
+function drawFireStar(s){
+  const x=s.x-G.cam,y=s.y,dir=Math.sign(s.vx);
+  cx.save();cx.globalCompositeOperation='lighter';
+  const g=cx.createRadialGradient(x,y,1,x,y,13);g.addColorStop(0,'rgba(255,245,150,.95)');g.addColorStop(.4,'rgba(255,130,20,.75)');g.addColorStop(1,'rgba(255,50,5,0)');cx.fillStyle=g;cx.beginPath();cx.arc(x,y,13,0,Math.PI*2);cx.fill();
+  cx.fillStyle='rgba(255,110,25,.7)';cx.beginPath();cx.moveTo(x+dir*3,y-4);cx.lineTo(x-dir*(18+Math.sin(G.tick*.7)*4),y-5);cx.lineTo(x-dir*11,y);cx.lineTo(x-dir*23,y+5);cx.lineTo(x+dir*3,y+4);cx.fill();
+  drawStar(x,y,s.spin,5.5,'#fff0b5');cx.restore();
+}
+drawStorm=function(){
+  const storm=G.storm;
+  cx.save();cx.translate(0,-(G.camY||0));
+  if(storm)for(const clone of storm.clones){
+    if(clone.age<=0||clone.age>29)continue;
+    const alpha=Math.min(.8,clone.age/4,(30-clone.age)/7);
+    cx.save();cx.globalAlpha=alpha;
+    drawSprite(clone,1);cx.restore();
+    cx.save();cx.globalCompositeOperation='lighter';cx.globalAlpha=alpha*.2;drawSprite(clone,1,true);cx.restore();
+    cx.strokeStyle='rgba(177,146,255,'+(alpha*.5)+')';cx.lineWidth=1.5;cx.beginPath();cx.moveTo(clone.x-G.cam-clone.face*36,clone.y-28);cx.lineTo(clone.x-G.cam-clone.face*13,clone.y-28);cx.stroke();
+  }
+  for(const sl of G.slashes||[]){
+    const x=sl.x-G.cam,y=sl.y,k=sl.t/14;cx.save();cx.globalCompositeOperation='lighter';cx.globalAlpha=k;cx.strokeStyle='#d8bdff';cx.lineWidth=2;cx.beginPath();cx.ellipse(x,y,26,9,-.6,0,Math.PI*1.6);cx.stroke();cx.restore();
+  }
+  cx.restore();
+};
+const techniqueHud=drawHud;
+drawHud=function(){
+  techniqueHud();const p=G.player;if(!p)return;const power=NINJA_POWERS[selectedPower(p)];
+  cx.save();cx.font='700 6px Heebo,sans-serif';cx.textAlign='left';cx.fillStyle='rgba(8,12,25,.9)';cx.fillRect(32,28,145,8);cx.fillStyle=power.color;
+  cx.fillText(power.name+' · '+(p.pwT>0?'פעיל':p.pw>=100?'מוכן · E':'טעינה '+Math.floor(p.pw||0)+'%'),34,34);cx.restore();
+};
+const powerToolbar=document.createElement('div');powerToolbar.id='powerToolbar';powerToolbar.dir='rtl';
+powerToolbar.style.cssText='display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:8px auto;max-width:960px';
+const powerButtons=[];
+for(const [index,id] of Object.keys(NINJA_POWERS).entries()){
+  const power=NINJA_POWERS[id],button=document.createElement('button');button.type='button';button.dataset.power=id;
+  button.textContent=power.icon+' '+(index+7)+' · '+power.name;button.title=power.detail+' · בחר ואז E או כפתור כוח';
+  button.style.cssText='border:1px solid #48536e;border-radius:12px;background:#121a2c;color:#e3eafa;padding:9px 15px;cursor:pointer;font:700 14px Heebo,sans-serif;min-height:42px';
+  button.onclick=()=>{choosePower(id);if(G.scene==='play'&&G.player?.pw>=100)activatePower(G.player);button.blur();};
+  powerToolbar.appendChild(button);powerButtons.push(button);
+}
+const powerHint=document.createElement('span');powerHint.style.cssText='font:13px Heebo,sans-serif;color:#b8c5db;align-self:center';powerHint.textContent='בחר כוח · מלא את המד · הפעל ב־E או ⚡';powerToolbar.appendChild(powerHint);
+document.querySelector('.screen').after(powerToolbar);
+function choosePower(id){if(!NINJA_POWERS[id])return;S.powerChoice=id;if(G.player)G.player.powerChoice=id;saveS();refreshPowerButtons();}
+function refreshPowerButtons(){
+  const id=selectedPower(G.player);for(const b of powerButtons){const selected=b.dataset.power===id;b.setAttribute('aria-pressed',String(selected));b.style.borderColor=selected?NINJA_POWERS[id].color:'#48536e';b.style.background=selected?'#22314b':'#121a2c';}
+}
+refreshPowerButtons();
+window.addEventListener('keydown',event=>{
+  if(event.target?.closest('input,textarea,select')||event.repeat)return;
+  const id={Digit7:'wave',Digit8:'fire',Digit9:'clones'}[event.code];if(id){event.preventDefault();choosePower(id);}
+});
+// Keep this prototype available as an explicit, original-art practice scene.
+startMotionTrial=function(){
+  G.two=false;startRun(true);loadStage(4);G.scene='play';S.r3=false;elR3.checked=false;
+  ST.ambushes=[];G.amb=null;G.storm=null;G.slashes=[];
+  const p=G.player;Object.assign(p,{x:4210,y:232,gy:232,pw:100,pwT:0,inv:45,sc:1,powerChoice:S.powerChoice||'wave'});
+  G.cam=4000;G.camMin=0;G.bigT=0;G.msgT=0;G.zoneBanner=null;
+  G.foes=[4260,4320,4380].map((x,i)=>{const f=makeFoe(i===1?'thrower':'grunt',x);f.y=f.gy=groundAt(x,150);f.cd=120+i*40;return f;});
+  refreshPowerButtons();say('נינג׳ות מקוריות · בחר כוח 7 / 8 / 9 ואז E · רווח ירי · Esc השהיה',280);
+};
+trialButton.textContent='נינג׳ות וכוחות · משחק ניסיון';
+elR3.parentElement.hidden=true;modelStatus.hidden=true;
+const rechargeButton=document.createElement('button');rechargeButton.type='button';rechargeButton.textContent='טען כוח בניסיון';rechargeButton.id='rechargePower';rechargeButton.style.cssText=powerButtons[0].style.cssText;
+rechargeButton.onclick=()=>{if(G.trial&&G.scene==='play'){G.storm=null;for(const p of G.players){p.pw=100;p.pwT=0;p.powerCast=null;p.castT=0;if(p.state==='focus')p.state='idle';}}rechargeButton.blur();};powerToolbar.appendChild(rechargeButton);
+const techniqueMenu=menuStep;
+menuStep=function(){techniqueMenu();rechargeButton.hidden=!G.trial||G.scene!=='play';powerToolbar.hidden=!['title','play','pause'].includes(G.scene);};
+
+const mobileBrand=document.createElement('div');mobileBrand.id='mobileBrand';mobileBrand.innerHTML='Ninja Shadows<small>סיבוב הטלפון מאפשר מבט רחב יותר</small>';document.querySelector('.screen').appendChild(mobileBrand);
+const mobilePowerButton=document.createElement('button');mobilePowerButton.type='button';mobilePowerButton.id='mobilePowerPick';mobilePowerButton.setAttribute('aria-label','בחירת כוח נינג׳ה');
+document.querySelector('.screen').appendChild(mobilePowerButton);
+const mobilePowerPanel=document.createElement('div');mobilePowerPanel.id='mobilePowerPanel';mobilePowerPanel.className='ovl';mobilePowerPanel.hidden=true;
+mobilePowerPanel.setAttribute('role','dialog');mobilePowerPanel.setAttribute('aria-modal','true');mobilePowerPanel.setAttribute('aria-label','בחירת כוח');
+const powerCard=document.createElement('div');powerCard.className='card';powerCard.innerHTML='<h2>בחר את כוח הנינג׳ה</h2><small>הכוח מופעל בכפתור ⚡ כשהמד מלא.</small>';mobilePowerPanel.appendChild(powerCard);
+let powerPickerPaused=false;
+function closeMobilePower(){
+  mobilePowerPanel.hidden=true;
+  if(powerPickerPaused&&G.scene==='pause')resumeGame();else if(G.scene==='pause')document.getElementById('pauseMenu').hidden=false;
+  powerPickerPaused=false;mobilePowerButton.focus({preventScroll:true});
+}
+for(const [id,power]of Object.entries(NINJA_POWERS)){
+  const button=document.createElement('button');button.type='button';button.dataset.mobilePower=id;button.textContent=power.icon+' '+power.name+' · '+power.detail;button.style.borderColor=power.color;
+  button.onclick=()=>{choosePower(id);closeMobilePower();};powerCard.appendChild(button);
+}
+const mobileRecharge=document.createElement('button');mobileRecharge.type='button';mobileRecharge.textContent='טען כוח מחדש בניסיון';mobileRecharge.onclick=()=>{closeMobilePower();rechargeButton.click();};powerCard.appendChild(mobileRecharge);
+const powerClose=document.createElement('button');powerClose.type='button';powerClose.textContent='חזרה למשחק';powerClose.onclick=closeMobilePower;powerCard.appendChild(powerClose);
+document.querySelector('.screen').appendChild(mobilePowerPanel);
+mobilePowerButton.onclick=()=>{
+  powerPickerPaused=G.scene==='play';if(powerPickerPaused)pauseGame();
+  document.getElementById('pauseMenu').hidden=true;mobileRecharge.hidden=!G.trial;mobilePowerPanel.hidden=false;powerCard.querySelector('button').focus({preventScroll:true});
+};
+const mobileMenuStep=menuStep;
+menuStep=function(){
+  mobileMenuStep();mobilePowerButton.hidden=!['play','pause'].includes(G.scene);
+  const power=NINJA_POWERS[selectedPower(G.player)],text=power.icon+' '+power.name+' · החלף';if(mobilePowerButton.textContent!==text)mobilePowerButton.textContent=text;
+  if(!['play','pause'].includes(G.scene)){mobilePowerPanel.hidden=true;powerPickerPaused=false;}
+};
+const mobileOnBack=onBack;onBack=function(){if(!mobilePowerPanel.hidden){closeMobilePower();return;}mobileOnBack();};
+document.getElementById('touch').removeAttribute('aria-hidden');
+
+window.__yoru = { actionNear: actionNear, doAction: doAction, actionUi: actionUi, safeRespawn, NINJA_POWERS, choosePower, selectedPower, powerStep, stepPowerOrb, clearPowerPath, stormStep, spawnShot, shotsStep, statusStep, drawStorm, ac,  startMotionTrial, MOVES, startMove, playerStep, bodyBox, solidHit, settings:S, G: G, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, get loopClock(){return {last,acc};}, get audio(){return AC;}, get musicBus(){return musBus;}, get canvas(){return cv;}, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, navReach: navReach, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, navMove: navMove, navOk: navOk, cameraStep: cameraStep, powerTier: powerTier, completeCityMission: completeCityMission, cityMissions: CITY_MISSIONS, alertStep: alertStep, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
+loadSprites().then(() => { try { if (window.THREE && S.r3) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
 })();
 </script>
 

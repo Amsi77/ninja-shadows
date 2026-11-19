@@ -1,0 +1,66 @@
+{
+  "stageOrder": [
+    4,
+    5,
+    0,
+    1,
+    2,
+    3
+  ],
+  "stages": [
+    {
+      "stageId": 0,
+      "stageNameHe": "מגדל אייפל והנהר",
+      "track": "music/river-lanterns.mp3",
+      "titleHe": "פנסים על הנהר",
+      "bpm": 104,
+      "bars": 40
+    },
+    {
+      "stageId": 1,
+      "stageNameHe": "הלובר",
+      "track": "music/louvre-whispers.mp3",
+      "titleHe": "לחישות בלובר",
+      "bpm": 92,
+      "bars": 32
+    },
+    {
+      "stageId": 2,
+      "stageNameHe": "נוטרדאם",
+      "track": "music/cathedral-moon.mp3",
+      "titleHe": "ירח מעל נוטרדאם",
+      "bpm": 84,
+      "bars": 32
+    },
+    {
+      "stageId": 3,
+      "stageNameHe": "מונמארטר",
+      "track": "music/montmartre-dawn.mp3",
+      "titleHe": "זריחה במונמארטר",
+      "bpm": 112,
+      "bars": 40
+    },
+    {
+      "stageId": 4,
+      "stageNameHe": "העיר העתיקה",
+      "track": "music/moonlit-rooftops.mp3",
+      "titleHe": "גגות לאור ירח",
+      "bpm": 100,
+      "bars": 40
+    },
+    {
+      "stageId": 5,
+      "stageNameHe": "חיפה",
+      "track": "music/haifa-gardens.mp3",
+      "titleHe": "גני הטרסות",
+      "bpm": 96,
+      "bars": 40
+    }
+  ],
+  "boss": {
+    "track": "music/shadow-pulse.mp3",
+    "titleHe": "דופק הצללים",
+    "bpm": 116,
+    "bars": 32
+  }
+}
