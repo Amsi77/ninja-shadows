@@ -1,7 +1,7 @@
 <!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>מצודת דוד בתלת ממד</title><style>body{margin:0;background:#bed1dc;font:16px Arial}canvas{display:block;touch-action:none}aside{position:fixed;top:15px;right:15px;background:#152127dd;color:#fff;padding:14px;border-radius:8px;max-width:270px}button{padding:8px;margin:4px}</style><aside>מצודת דוד · מודל מבלנדר<br><small>גרירה לסיבוב · גלגלת להתקרבות<br>במגע השתמשו בכפתורי ההתקרבות</small><br><button id="near">התקרבות</button><button id="far">התרחקות</button><button id="gate">השער</button><button id="court">החצר</button><p id="status">טוען מודל…</p></aside><script src="vendor/three.min.js"></script><script>
 (async()=>{
-const scene=new THREE.Scene();scene.background=new THREE.Color('#c9d7db');scene.fog=new THREE.FogExp2('#c9d7db',.007);
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));document.body.append(renderer.domElement);renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();scene.background=new THREE.Color('#91b7d1');scene.fog=new THREE.FogExp2('#c6d0cb',.005);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));document.body.append(renderer.domElement);renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const camera=new THREE.PerspectiveCamera(50,1,.1,300);
 scene.add(new THREE.HemisphereLight(0xd9e8f5,0x776b51,.65));const sun=new THREE.DirectionalLight(0xffedcf,2.1);sun.position.set(-23,31,18);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-38,right:38,top:34,bottom:-34,near:1,far:100});sun.shadow.bias=-.00015;sun.shadow.normalBias=.035;scene.add(sun);
 const text=await fetch('citadel-realistic-mesh.txt?v=20261119-2', { cache: 'no-store' }).then(r=>{if(!r.ok)throw Error('model');return r.text()});
@@ -11,7 +11,7 @@ const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzi
 const raw=new DataView(await new Response(stream).arrayBuffer());let offset=0;
 const count=raw.getUint32(offset,true);offset+=4;
 function weatheredMaterial(color,index){
- const material=new THREE.MeshStandardMaterial({color:new THREE.Color(...color),roughness:.91,metalness:index===9?.45:0,side:THREE.DoubleSide});
+ const material=new THREE.MeshStandardMaterial({color:index<6 ? new THREE.Color(color[0]*1.02,color[1]*.83,color[2]*.67) : new THREE.Color(...color),roughness:.91,metalness:index===9?.45:0,side:THREE.DoubleSide});
  if(index>5)return material;
  material.onBeforeCompile=shader=>{
  shader.vertexShader='varying vec3 vStoneWorld;\n'+shader.vertexShader;
