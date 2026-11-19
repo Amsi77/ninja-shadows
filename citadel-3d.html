@@ -1,0 +1,25 @@
+<!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>מצודת דוד בתלת ממד</title><style>body{margin:0;background:#bed1dc;font:16px Arial}canvas{display:block;touch-action:none}aside{position:fixed;top:15px;right:15px;background:#152127dd;color:#fff;padding:14px;border-radius:8px;max-width:270px}button{padding:8px;margin:4px}</style><aside>מצודת דוד · מודל מבלנדר<br><small>גרירה לסיבוב · גלגלת להתקרבות<br>במגע השתמשו בכפתורי ההתקרבות</small><br><button id="near">התקרבות</button><button id="far">התרחקות</button><button id="gate">השער</button><button id="court">החצר</button><p id="status">טוען מודל…</p></aside><script src="vendor/three.min.js"></script><script>
+(async()=>{
+const scene=new THREE.Scene();scene.background=new THREE.Color('#bed1dc');
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));document.body.append(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(50,1,.1,300);
+scene.add(new THREE.HemisphereLight(0xffffff,0x62513d,1.4));const sun=new THREE.DirectionalLight(0xffefcf,1.7);sun.position.set(-15,35,18);scene.add(sun);
+const text=await fetch('citadel-geometry.txt').then(r=>{if(!r.ok)throw Error('model');return r.text()});
+const bytes=Uint8Array.from(atob(text.trim()),c=>c.charCodeAt(0));
+const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+const data=JSON.parse(await new Response(stream).text());
+for(const [color,positions] of data){const geom=new THREE.BufferGeometry();const p=new Float32Array(positions.length);for(let i=0;i<p.length;i+=3){p[i]=positions[i];p[i+1]=positions[i+2];p[i+2]=-positions[i+1];}geom.setAttribute('position',new THREE.BufferAttribute(p,3));geom.computeVertexNormals();scene.add(new THREE.Mesh(geom,new THREE.MeshStandardMaterial({color:new THREE.Color(...color),roughness:.94,side:THREE.DoubleSide})));}
+let yaw=.55,pitch=.55,distance=64,target=new THREE.Vector3(0,3,0),drag=null;
+renderer.domElement.onpointerdown=e=>{drag=[e.clientX,e.clientY];renderer.domElement.setPointerCapture(e.pointerId)};
+renderer.domElement.onpointermove=e=>{if(!drag)return;yaw-=(e.clientX-drag[0])*.006;pitch=Math.max(.06,Math.min(1.4,pitch+(e.clientY-drag[1])*.005));drag=[e.clientX,e.clientY]};
+renderer.domElement.onpointerup=renderer.domElement.onpointercancel=()=>drag=null;
+function zoom(n){distance=Math.max(6,Math.min(110,distance*n))}
+renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();zoom(Math.exp(e.deltaY*.001))},{passive:false});
+document.querySelector('#near').onclick=()=>zoom(.8);document.querySelector('#far').onclick=()=>zoom(1.25);
+document.querySelector('#gate').onclick=()=>{target.set(0,3,10);distance=20;pitch=.16;yaw=.18};
+document.querySelector('#court').onclick=()=>{target.set(0,3,-1);distance=19;pitch=.4;yaw=.4};
+function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}onresize=resize;resize();
+renderer.setAnimationLoop(()=>{camera.position.set(target.x+Math.sin(yaw)*Math.cos(pitch)*distance,target.y+Math.sin(pitch)*distance,target.z+Math.cos(yaw)*Math.cos(pitch)*distance);camera.lookAt(target);renderer.render(scene,camera)});
+document.querySelector('#status').textContent='גרסת מבנה ראשונית';window.cityReady=true;
+})().catch(e=>document.querySelector('#status').textContent='טעינת המודל נכשלה. רעננו לנסות שוב.');
+</script></html>
