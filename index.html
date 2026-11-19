@@ -435,7 +435,7 @@ function blit(L, sx, sy, sw, sh, dx, dy){
 // 1-3. sprites: poses cut from the design sheets, composed into animation strips at load
 // ===================================================================
 const OUT = '#0b0a12';
-const ATLAS = {"meta":{"sguard":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":151,"h":205},"side":{"i":1,"w":91,"h":168},"bash":{"i":2,"w":256,"h":178}}},"striker":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":97,"h":205},"side":{"i":1,"w":55,"h":167},"kick":{"i":2,"w":256,"h":176}}},"echo":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":139,"h":207},"side":{"i":1,"w":90,"h":170},"strike":{"i":2,"w":186,"h":177}}},"raven":{"cw":512,"ch":384,"ax":256,"ay":368,"res":2,"poses":{"stand":{"i":0,"w":171,"h":313},"aim":{"i":1,"w":223,"h":219},"fan":{"i":2,"w":244,"h":195},"leap":{"i":3,"w":166,"h":133},"reload":{"i":4,"w":208,"h":200}}},"emperor":{"cw":512,"ch":384,"ax":256,"ay":368,"res":2,"poses":{"stand":{"i":0,"w":124,"h":332},"charge":{"i":1,"w":277,"h":243},"spin":{"i":2,"w":299,"h":275},"wave":{"i":3,"w":349,"h":253},"kneel":{"i":4,"w":258,"h":245}}},"frost":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":78,"h":197},"throw":{"i":1,"w":229,"h":165},"recover":{"i":2,"w":206,"h":131}}},"drummer":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":129,"h":200},"buff":{"i":1,"w":236,"h":167},"stagger":{"i":2,"w":209,"h":160}}},"pulse":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"idle":{"i":0,"w":105,"h":228,"mz":[12.8,-33.5]},"walk":{"i":1,"w":144,"h":225,"mz":[13.8,-33.5]},"run":{"i":2,"w":191,"h":212,"mz":[25.5,-32.8]},"aim":{"i":3,"w":170,"h":209,"mz":[18.8,-43.2]},"burst":{"i":4,"w":169,"h":215,"mz":[21.8,-45.5]},"sweep":{"i":5,"w":159,"h":163,"mz":[19.8,-32.5]},"recoil":{"i":6,"w":150,"h":212,"mz":[11.8,-46.5]},"overheat":{"i":7,"w":114,"h":218},"dodge":{"i":8,"w":207,"h":192},"hit":{"i":9,"w":141,"h":203},"stagger":{"i":10,"w":179,"h":149},"dead":{"i":11,"w":258,"h":87}}},"chain":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":95,"h":194},"sweep":{"i":1,"w":213,"h":117},"recover":{"i":2,"w":162,"h":124}}},"ember":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":95,"h":191},"shot":{"i":1,"w":188,"h":125},"reload":{"i":2,"w":129,"h":124}}},"shadow":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":28,"h":155},"windup":{"i":1,"w":134,"h":119},"volley":{"i":2,"w":122,"h":110},"leap":{"i":3,"w":117,"h":109},"landing":{"i":4,"w":118,"h":82}}},"warden":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":37,"h":159},"windup":{"i":1,"w":111,"h":134},"charge":{"i":2,"w":132,"h":119},"punch":{"i":3,"w":166,"h":132},"recover":{"i":4,"w":132,"h":110}}},"blue":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"idle":{"i":0,"w":80,"h":112,"tipx":40,"tipy":-2},"run":{"i":1,"w":92,"h":105,"tipx":87,"tipy":-72},"jump":{"i":2,"w":86,"h":99,"tipx":43,"tipy":-63},"punch":{"i":3,"w":119,"h":103,"tipx":69,"tipy":-82},"kick":{"i":4,"w":101,"h":121,"tipx":73,"tipy":-112},"bow":{"i":5,"w":119,"h":134,"tipx":63,"tipy":-94}}},"red":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"idle":{"i":0,"w":74,"h":118,"tipx":38,"tipy":-5},"run":{"i":1,"w":85,"h":107,"tipx":79,"tipy":-72},"jump":{"i":2,"w":64,"h":99,"tipx":32,"tipy":-54},"punch":{"i":3,"w":109,"h":106,"tipx":61,"tipy":-82},"kick":{"i":4,"w":100,"h":117,"tipx":72,"tipy":-104},"throw":{"i":5,"w":110,"h":107,"tipx":56,"tipy":-5}}},"grunt":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":34,"h":113,"tipx":21,"tipy":-47},"attack":{"i":1,"w":116,"h":90,"tipx":72,"tipy":-70}}},"archer":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":48,"h":115,"tipx":26,"tipy":-104},"attack":{"i":1,"w":118,"h":110,"tipx":70,"tipy":-74}}},"thrower":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":32,"h":111,"tipx":20,"tipy":-47},"attack":{"i":1,"w":105,"h":87,"tipx":60,"tipy":-70}}},"boss":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":51,"h":152,"tipx":25,"tipy":-70},"attack":{"i":1,"w":193,"h":137,"tipx":128,"tipy":-109}}},"bluepk":{"cw":192,"ch":176,"ax":96,"ay":168,"poses":{"gapjump":{"i":0,"w":122,"h":98},"hang":{"i":1,"w":39,"h":133},"pullup":{"i":2,"w":84,"h":115},"cling":{"i":3,"w":55,"h":107},"walljump":{"i":4,"w":105,"h":103},"lowroll":{"i":5,"w":118,"h":47}}},"redpk":{"cw":192,"ch":176,"ax":96,"ay":168,"poses":{"gapjump":{"i":0,"w":119,"h":100},"hang":{"i":1,"w":49,"h":126},"pullup":{"i":2,"w":100,"h":108},"cling":{"i":3,"w":59,"h":100},"walljump":{"i":4,"w":100,"h":106},"lowroll":{"i":5,"w":112,"h":53}}},"kit":{"floor_l":[0,0,88,53],"floor_c":[90,0,134,53],"floor_r":[226,0,90,53],"wall":[318,0,127,142],"stairs":[447,0,164,111],"arch":[613,0,142,149],"door":[757,0,86,133],"door_open":[845,0,95,133],"ledge":[942,0,106,74],"pillar":[1050,0,20,105],"platform":[1072,0,100,40],"bridge_l":[1174,0,94,70],"bridge_r":[1270,0,95,70],"moving":[1367,0,135,108],"ladder":[1504,0,45,130],"rope":[1551,0,26,130],"balcony":[1579,0,138,129],"rooftop":[1719,0,144,102],"spikes":[1865,0,61,38],"plate":[1928,0,61,28],"lever_off":[1991,0,46,54],"lever_on":[2039,0,48,53],"gate":[2089,0,65,80],"gate_open":[2156,0,76,81],"crate":[2234,0,48,44],"crate_broken":[2284,0,56,37],"lantern":[2342,0,38,56],"key":[2382,0,30,32],"potion":[2414,0,25,35]},"breaker":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":253,"h":238},"side":{"i":1,"w":109,"h":234},"raise":{"i":2,"w":224,"h":234},"slam":{"i":3,"w":347,"h":181},"recover":{"i":4,"w":166,"h":213}}},"viper":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":102,"h":208},"side":{"i":1,"w":62,"h":208},"windup":{"i":2,"w":210,"h":188},"pull":{"i":3,"w":187,"h":163},"missed":{"i":4,"w":157,"h":190}}}},"img":{"sguard":"assets/sguard.png","striker":"assets/striker.png","echo":"assets/echo.png","raven":"assets/raven.png","emperor":"assets/emperor.png","frost":"assets/frost.png","drummer":"assets/drummer.png","pulse":"assets/pulse.png","chain":"assets/chain.png","ember":"assets/ember.png","logo":"assets/logo.webp","shadow":"assets/shadow.png","warden":"assets/warden.png","paris1":"assets/paris1.jpg","paris2":"assets/paris2.jpg","paris3":"assets/paris3.jpg","paris4":"assets/paris4.jpg","blue":"assets/blue.png","red":"assets/red.png","grunt":"assets/grunt.png","archer":"assets/archer.png","thrower":"assets/thrower.png","boss":"assets/boss.png","bluepk":"assets/bluepk.png","redpk":"assets/redpk.png","kit":"assets/kit.png","breaker":"assets/breaker.png","viper":"assets/viper.png","city1":"assets/city1-hd.png","city2":"assets/city2.jpg","city3":"assets/city3-hd.png","city4":"assets/city4-hd.png","city5":"assets/city5.jpg","city6":"assets/city6.jpg","citymap":"assets/citymap.jpg"}};
+const ATLAS = {"meta":{"sguard":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":151,"h":205},"side":{"i":1,"w":91,"h":168},"bash":{"i":2,"w":256,"h":178}}},"striker":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":97,"h":205},"side":{"i":1,"w":55,"h":167},"kick":{"i":2,"w":256,"h":176}}},"echo":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":139,"h":207},"side":{"i":1,"w":90,"h":170},"strike":{"i":2,"w":186,"h":177}}},"raven":{"cw":512,"ch":384,"ax":256,"ay":368,"res":2,"poses":{"stand":{"i":0,"w":171,"h":313},"aim":{"i":1,"w":223,"h":219},"fan":{"i":2,"w":244,"h":195},"leap":{"i":3,"w":166,"h":133},"reload":{"i":4,"w":208,"h":200}}},"emperor":{"cw":512,"ch":384,"ax":256,"ay":368,"res":2,"poses":{"stand":{"i":0,"w":124,"h":332},"charge":{"i":1,"w":277,"h":243},"spin":{"i":2,"w":299,"h":275},"wave":{"i":3,"w":349,"h":253},"kneel":{"i":4,"w":258,"h":245}}},"frost":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":78,"h":197},"throw":{"i":1,"w":229,"h":165},"recover":{"i":2,"w":206,"h":131}}},"drummer":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":129,"h":200},"buff":{"i":1,"w":236,"h":167},"stagger":{"i":2,"w":209,"h":160}}},"pulse":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"idle":{"i":0,"w":105,"h":228,"mz":[12.8,-33.5]},"walk":{"i":1,"w":144,"h":225,"mz":[13.8,-33.5]},"run":{"i":2,"w":191,"h":212,"mz":[25.5,-32.8]},"aim":{"i":3,"w":170,"h":209,"mz":[18.8,-43.2]},"burst":{"i":4,"w":169,"h":215,"mz":[21.8,-45.5]},"sweep":{"i":5,"w":159,"h":163,"mz":[19.8,-32.5]},"recoil":{"i":6,"w":150,"h":212,"mz":[11.8,-46.5]},"overheat":{"i":7,"w":114,"h":218},"dodge":{"i":8,"w":207,"h":192},"hit":{"i":9,"w":141,"h":203},"stagger":{"i":10,"w":179,"h":149},"dead":{"i":11,"w":258,"h":87}}},"chain":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":95,"h":194},"sweep":{"i":1,"w":213,"h":117},"recover":{"i":2,"w":162,"h":124}}},"ember":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":95,"h":191},"shot":{"i":1,"w":188,"h":125},"reload":{"i":2,"w":129,"h":124}}},"shadow":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":28,"h":155},"windup":{"i":1,"w":134,"h":119},"volley":{"i":2,"w":122,"h":110},"leap":{"i":3,"w":117,"h":109},"landing":{"i":4,"w":118,"h":82}}},"warden":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":37,"h":159},"windup":{"i":1,"w":111,"h":134},"charge":{"i":2,"w":132,"h":119},"punch":{"i":3,"w":166,"h":132},"recover":{"i":4,"w":132,"h":110}}},"blue":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"idle":{"i":0,"w":80,"h":112,"tipx":40,"tipy":-2},"run":{"i":1,"w":92,"h":105,"tipx":87,"tipy":-72},"jump":{"i":2,"w":86,"h":99,"tipx":43,"tipy":-63},"punch":{"i":3,"w":119,"h":103,"tipx":69,"tipy":-82},"kick":{"i":4,"w":101,"h":121,"tipx":73,"tipy":-112},"bow":{"i":5,"w":119,"h":134,"tipx":63,"tipy":-94}}},"red":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"idle":{"i":0,"w":74,"h":118,"tipx":38,"tipy":-5},"run":{"i":1,"w":85,"h":107,"tipx":79,"tipy":-72},"jump":{"i":2,"w":64,"h":99,"tipx":32,"tipy":-54},"punch":{"i":3,"w":109,"h":106,"tipx":61,"tipy":-82},"kick":{"i":4,"w":100,"h":117,"tipx":72,"tipy":-104},"throw":{"i":5,"w":110,"h":107,"tipx":56,"tipy":-5}}},"grunt":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":34,"h":113,"tipx":21,"tipy":-47},"attack":{"i":1,"w":116,"h":90,"tipx":72,"tipy":-70}}},"archer":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":48,"h":115,"tipx":26,"tipy":-104},"attack":{"i":1,"w":118,"h":110,"tipx":70,"tipy":-74}}},"thrower":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":32,"h":111,"tipx":20,"tipy":-47},"attack":{"i":1,"w":105,"h":87,"tipx":60,"tipy":-70}}},"boss":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":51,"h":152,"tipx":25,"tipy":-70},"attack":{"i":1,"w":193,"h":137,"tipx":128,"tipy":-109}}},"bluepk":{"cw":192,"ch":176,"ax":96,"ay":168,"poses":{"gapjump":{"i":0,"w":122,"h":98},"hang":{"i":1,"w":39,"h":133},"pullup":{"i":2,"w":84,"h":115},"cling":{"i":3,"w":55,"h":107},"walljump":{"i":4,"w":105,"h":103},"lowroll":{"i":5,"w":118,"h":47}}},"redpk":{"cw":192,"ch":176,"ax":96,"ay":168,"poses":{"gapjump":{"i":0,"w":119,"h":100},"hang":{"i":1,"w":49,"h":126},"pullup":{"i":2,"w":100,"h":108},"cling":{"i":3,"w":59,"h":100},"walljump":{"i":4,"w":100,"h":106},"lowroll":{"i":5,"w":112,"h":53}}},"kit":{"floor_l":[0,0,88,53],"floor_c":[90,0,134,53],"floor_r":[226,0,90,53],"wall":[318,0,127,142],"stairs":[447,0,164,111],"arch":[613,0,142,149],"door":[757,0,86,133],"door_open":[845,0,95,133],"ledge":[942,0,106,74],"pillar":[1050,0,20,105],"platform":[1072,0,100,40],"bridge_l":[1174,0,94,70],"bridge_r":[1270,0,95,70],"moving":[1367,0,135,108],"ladder":[1504,0,45,130],"rope":[1551,0,26,130],"balcony":[1579,0,138,129],"rooftop":[1719,0,144,102],"spikes":[1865,0,61,38],"plate":[1928,0,61,28],"lever_off":[1991,0,46,54],"lever_on":[2039,0,48,53],"gate":[2089,0,65,80],"gate_open":[2156,0,76,81],"crate":[2234,0,48,44],"crate_broken":[2284,0,56,37],"lantern":[2342,0,38,56],"key":[2382,0,30,32],"potion":[2414,0,25,35]},"breaker":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":253,"h":238},"side":{"i":1,"w":109,"h":234},"raise":{"i":2,"w":224,"h":234},"slam":{"i":3,"w":347,"h":181},"recover":{"i":4,"w":166,"h":213}}},"viper":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":102,"h":208},"side":{"i":1,"w":62,"h":208},"windup":{"i":2,"w":210,"h":188},"pull":{"i":3,"w":187,"h":163},"missed":{"i":4,"w":157,"h":190}}}},"img":{"sguard":"assets/sguard.png","striker":"assets/striker.png","echo":"assets/echo.png","raven":"assets/raven.png","emperor":"assets/emperor.png","frost":"assets/frost.png","drummer":"assets/drummer.png","pulse":"assets/pulse.png","chain":"assets/chain.png","ember":"assets/ember.png","logo":"assets/logo.webp","shadow":"assets/shadow.png","warden":"assets/warden.png","paris1":"assets/paris1.jpg","paris2":"assets/paris2.jpg","paris3":"assets/paris3.jpg","paris4":"assets/paris4.jpg","blue":"assets/blue.png","red":"assets/red.png","grunt":"assets/grunt.png","archer":"assets/archer.png","thrower":"assets/thrower.png","boss":"assets/boss.png","bluepk":"assets/bluepk.png","redpk":"assets/redpk.png","kit":"assets/kit.png","breaker":"assets/breaker.png","viper":"assets/viper.png","city1":"assets/city1-hd.png","city2":"assets/city2.jpg","city3":"assets/city3-hd.png","city4":"assets/city4-hd.png","city5":"assets/city5.jpg","city6":"assets/city6.jpg","citymap":"assets/citymap.jpg","haifa1":"assets/haifa1.jpg","haifa2":"assets/haifa2.jpg","haifa3":"assets/haifa3.jpg","haifa4":"assets/haifa4.jpg","haifa5":"assets/haifa5.jpg","haifa6":"assets/haifa6.jpg"}};
 const CHARS = {
   blue:    { label: 'AMSALEM', sub: 'מכה חזק, טווח ארוך',   speed: 1.72, dmg: 1.25, reach: 1.12, startup: 0,  starRec: 10, hp: 110 },
   red:     { label: 'שיר',  sub: 'זריזה, מתאוששת מהר',   speed: 2.3,  dmg: 0.85, reach: 1,    startup: -1, starRec: 5,  hp: 95 },
@@ -2269,9 +2269,15 @@ function playerLogic(p){
   else setAnim(p, p.lockT > 0 ? 'walljump' : (Math.abs(p.vx) > 2.2 ? 'gapjump' : (p.vy < 0 ? 'jump' : 'fall')));
   if (p.y >= p.gy) { p.y = p.gy; p.vy = 0; p.state = 'idle'; p.flipped = false; p.flipT = 0; p.bflipT = 0; setAnim(p, 'idle', true); landDust(p); }
 }
+function groundAtSolid(x, y){ let g = 9999; for (const s2 of ST.solids) if (!s2.open && x >= s2.x - 5 && x <= s2.x + s2.w + 5 && s2.y >= y - 8 && s2.y < g) g = s2.y; return g; }
 function playerStep(p){
   if(p.inp.P.up)p.jumpBuffer=7;else if(p.jumpBuffer>0)p.jumpBuffer--;
-  p.gy = groundAt(p.x, p.y);
+  p.gy = p.dropT > 0 ? groundAtSolid(p.x, p.y + 2) : groundAt(p.x, p.y);
+  if (p.dropT > 0) p.dropT--;
+  if (p.alive && p.inp.H.down && !p.inp.H.left && !p.inp.H.right && p.y >= p.gy - 0.5 && (p.state === 'crouch' || p.state === 'idle') && groundAtSolid(p.x, p.y) > p.y + 1) {   // hold down on a platform: drop through it
+    p.downT = (p.downT || 0) + 1;
+    if (p.downT > 14) { p.downT = 0; p.dropT = 16; p.y += 3; p.gy = groundAtSolid(p.x, p.y); p.state = 'jump'; p.vy = 1; setAnim(p, 'fall', true); }
+  } else p.downT = 0;
   if(p.jumpBuffer>0&&p.y>=p.gy-.5&&/^(idle|run|jump)$/.test(p.state)){p.inp.P.up=true;p.jumpBuffer=0;}
   if (p.alive && (p.state === 'run' || p.state === 'idle') && p.gy > p.y && p.gy - p.y <= 10) p.y = p.gy;   // down the steps
   if (!(p.alive && parkourPre(p))) {
@@ -4261,7 +4267,8 @@ function buildParis3(){                       // Notre-Dame: alleys, roof-to-roo
 function buildCity(){                         // the Old City (harbour to hilltop): phase 1 = dock, warehouse alley, market
   const F = 232, S = (x, y, w, h, o) => Object.assign({ x: x, y: y, w: w, h: h }, o || {});
   const steps = (x0, y0, n, run, rise) => { const a = []; for (let i = 0; i < n; i++) a.push(S(x0 + i * run, y0 - rise * (i + 1), run + 1, 232 - (y0 - rise * (i + 1)) + 40)); return a; };
-  return parisBase({ id: 0, name: 'העיר העתיקה', bg: 'city', w: 6600, city: true, camY: true,
+  return parisBase({ id: 0, name: 'העיר העתיקה', bg: 'city', w: 6600, city: true, camY: true, bossMission: 'towerSignal', mapImg: 'citymap',
+    mapNodes: { dock: [0.45, 0.84], wh: [0.74, 0.80], market: [0.46, 0.56], hill: [0.65, 0.42], roofs: [0.36, 0.26], tower: [0.75, 0.12] },
     bossX: 6020, bossY: 40, bossKey: 'breaker', bossAfter: 'tower',
     zones: [
       { id: 'dock',   name: 'רציף הדייגים', x0: 0,    x1: 1500, bg: 'city1' },
@@ -4317,6 +4324,72 @@ function buildCity(){                         // the Old City (harbour to hillto
       { x: 5380, y: -40, t: 'כיכר המגדל' }],
     start: { x: 70, y: F } });
 }
+function buildHaifa(){                        // Haifa: terraced gardens from the lower gate up to the bay overlook
+  const F = 232, S = (x, y, w, h, o) => Object.assign({ x: x, y: y, w: w, h: h }, o || {});
+  const steps = (x0, y0, n, run, rise) => { const a = []; for (let i = 0; i < n; i++) a.push(S(x0 + i * run, y0 - rise * (i + 1), run + 1, 232 - (y0 - rise * (i + 1)) + 40)); return a; };
+  return parisBase({ id: 5, name: 'חיפה · גני הטרסות', bg: 'city', w: 5800, city: true, camY: true, dataKey: 'haifa',
+    bossX: 5260, bossY: 40, bossKey: 'shadow', bossAfter: 'overlook', bossMission: 'beacon',
+    bossHint: 'קודם הדלק את משואת הטרסה (ושחרר את הגנן בשדרה)',
+    zones: [
+      { id: 'gate',     name: 'שער הגנים',     x0: 0,    x1: 950,  bg: 'haifa1' },
+      { id: 'avenue',   name: 'שדרת המזרקה',   x0: 950,  x1: 1950, bg: 'haifa2' },
+      { id: 'terraces', name: 'מדרגות הטרסות', x0: 1950, x1: 2950, bg: 'haifa3' },
+      { id: 'star',     name: 'גן הכוכב',      x0: 2950, x1: 3950, bg: 'haifa4' },
+      { id: 'pergola',  name: 'מעבר הפרגולה',  x0: 3950, x1: 4900, bg: 'haifa5' },
+      { id: 'overlook', name: 'תצפית המפרץ',   x0: 4900, x1: 5800, bg: 'haifa6' }
+    ],
+    solids: [
+      S(-300, F, 2700, 70),
+      ...steps(2300, 232, 12, 16, 8),                            // the terrace stairs: 232 -> 136
+      S(2492, 136, 260, 136),                                    // the middle terrace
+      ...steps(2752, 136, 12, 16, 8),                            // the upper stairs: 136 -> 40
+      S(2944, 40, 3000, 232),                                    // the upper terraces: star garden, pergola, overlook
+      S(4560, -60, 16, 100, { gate: 1 })                         // the pergola's iron gate (key from the star garden)
+    ],
+    plats: [
+      { x: 1380, y: 204, w: 90, stair: 1 },                      // the fountain rim: stand on it; enemies walk past below
+      { x: 1600, y: 176, w: 120, awning: 1 },                    // a vine-covered arbour over the avenue
+      { x: 4060, y: -16, w: 380, roof: 1 }                       // the pergola roof beams
+    ],
+    climbs: [{ x: 4050, top: -16, bot: 40, edge: 4050, dir: 1 }],
+    crates: [{ x: 520, y: F }, { x: 1180, y: F }, { x: 3300, y: 40 }],
+    lanterns: [{ x: 40, y: F }, { x: 980, y: F }, { x: 2560, y: 136 }, { x: 3000, y: 40 }, { x: 4950, y: 40 }],
+    items: [{ kind: 'wpn', wid: 'kunai', x: 720, y: F - 12 }, { kind: 'wpn', wid: 'firestar', x: 1660, y: 162 }, { kind: 'hp', x: 2620, y: 124 },
+      { kind: 'key', x: 3560, y: 28 }, { kind: 'wpn', wid: 'smoke', x: 4250, y: -30 }, { kind: 'hp', x: 4800, y: 28 }, { kind: 'en', x: 3900, y: 28 }],
+    spawns: [{ t: 'grunt', x: 600, y: F }, { t: 'archer', x: 1660, y: 176 }, { t: 'agile', x: 1800, y: F }, { t: 'thrower', x: 2620, y: 136 },
+      { t: 'viper', x: 3700, y: 40 }, { t: 'ember', x: 4250, y: -16 }, { t: 'shield', x: 4400, y: 40 }],
+    hides: [
+      { id: 'ga', type: 'arch', x: 260 }, { id: 'gh', type: 'hedge', x: 820 },
+      { id: 'ah', type: 'hedge', x: 1250 }, { id: 'ah2', type: 'hedge', x: 1860 },
+      { id: 'tb', type: 'balcony', x: 2660, y: 136, top: 50 }, { id: 'tr', type: 'rail', x: 2560, y: 136 },
+      { id: 'sa', type: 'arch', x: 3080, y: 40 }, { id: 'sh', type: 'hedge', x: 3420, y: 40 }, { id: 'sa2', type: 'arch', x: 3820, y: 40 },
+      { id: 'pd', type: 'roofdrop', x: 4300, y: 40, top: -70 }, { id: 'pa', type: 'arch', x: 4480, y: 40 },
+      { id: 'o1', type: 'arch', x: 5000, y: 40 }, { id: 'o2', type: 'hedge', x: 5200, y: 40 }, { id: 'o3', type: 'roofdrop', x: 5120, y: 40, top: -90 }
+    ],
+    ambushes: [
+      { id: 'gate', x: 620, hint: 'משהו זז מאחורי השיחים…', sets: [[['grunt', 'gh'], ['grunt', 'ga']], [['agile', 'gh'], ['grunt', 'ga']]] },
+      { id: 'avenue', x: 1500, hint: 'השיחים בשדרה רועדים!', sets: [[['grunt', 'ah'], ['agile', 'ah2'], ['thrower', 'ah2']], [['viper', 'ah2'], ['grunt', 'ah']]] },
+      { id: 'terrace', x: 2520, y: 136, hint: 'צל נופל מהמרפסת!', sets: [[['agile', 'tb'], ['grunt', 'tr']], [['grunt', 'tb'], ['viper', 'tr'], ['grunt', 'tb']]] },
+      { id: 'star', x: 3200, y: 40, hint: 'צעדים בתוך הקשתות…', sets: [[['grunt', 'sa'], ['agile', 'sh'], ['chain', 'sa2']], [['echo', 'sh'], ['grunt', 'sa']]] },
+      { id: 'pergola', x: 4150, y: 40, hint: 'עלים נושרים מקורות הפרגולה!', sets: [[['agile', 'pd'], ['grunt', 'pa']], [['grunt', 'pd'], ['frost', 'pa']]] },
+      { id: 'overlook', x: 4980, y: 40, hint: 'תגבורת מכל הכיוונים!', chain: 1, sets: [[['grunt', 'o1'], ['agile', 'o2'], ['grunt', 'o3']], [['viper', 'o2'], ['brute', 'o1'], ['agile', 'o3']]] }
+    ],
+    missions: [
+      { id: 'gardener', x: 1750, y: 232, look: 'marketRescue', title: 'שחרר את הגנן הקשור בשדרת המזרקה', action: 'שחרר גנן', reward: 20, after: 'avenue',
+        needAfter: 'קודם נטרל את המארב בשדרה', done: 'הגנן שוחרר · הוא מספר על מפתח בגן הכוכב', unlock: 'bolt' },
+      { id: 'beacon', x: 4930, y: 40, look: 'towerSignal', title: 'הדלק את משואת הטרסה מעל המפרץ', action: 'הדלק משואה', reward: 30, requires: 'gardener',
+        needReq: 'קודם שחרר את הגנן בשדרת המזרקה', needReqHint: 'הגנן יודע איך להדליק את המשואה — הוא בשדרת המזרקה', done: 'המשואה דולקת · אדון הצללים מגיע!' }
+    ],
+    objFn: () => { const c = cityData(), has = id => c.a.indexOf(id) >= 0, gate = ST.solids.find(q => q.gate);
+      if (!c.missions.gardener) setObj('עלה בשדרת המזרקה ושחרר את הגנן');
+      else if (gate && !gate.open && !(G.player && G.player.hasKey)) setObj('מצא את מפתח הפרגולה בגן הכוכב');
+      else if (gate && !gate.open) setObj('פתח את שער הפרגולה');
+      else if (!c.missions.beacon) setObj('הדלק את משואת הטרסה בתצפית המפרץ');
+      else setObj('הבס את אדון הצללים בתצפית'); },
+    signs: [{ x: 90, y: 104, t: 'שער הגנים' }, { x: 990, y: 104, t: 'שדרת המזרקה' }, { x: 2000, y: 104, t: 'מדרגות הטרסות' },
+      { x: 3000, y: -70, t: 'גן הכוכב' }, { x: 3990, y: -80, t: 'מעבר הפרגולה' }, { x: 4940, y: -70, t: 'תצפית המפרץ' }],
+    start: { x: 70, y: F } });
+}
 function buildParis4(){                       // Montmartre: steep stairs, a forked alley, a climb to the roofs, the final duel
   const F = 232, S = (x, y, w, h, o) => Object.assign({ x: x, y: y, w: w, h: h }, o || {});
   const steps = [];
@@ -4337,11 +4410,11 @@ function buildParis4(){                       // Montmartre: steep stairs, a for
     decor: [],
     start: { x: 60, y: F } });
 }
-const STAGE_DEFS = [buildParis1, buildParis2, buildParis3, buildParis4, buildCity];
-const STAGE_ORDER = [4, 0, 1, 2, 3], FINAL_STAGE = 3, CITY_STAGE = 4;     // play order; indices keep old saves valid
+const STAGE_DEFS = [buildParis1, buildParis2, buildParis3, buildParis4, buildCity, buildHaifa];
+const STAGE_ORDER = [4, 5, 0, 1, 2, 3], FINAL_STAGE = 3, CITY_STAGE = 4, HAIFA_STAGE = 5;     // play order; indices keep old saves valid
 function nextStage(i){ return STAGE_ORDER[STAGE_ORDER.indexOf(i) + 1]; }
 function stageNo(i){ return STAGE_ORDER.indexOf(i) + 1; }
-const STAGE_NAMES = ['מגדל אייפל והנהר', 'הלובר', 'נוטרדאם', 'מונמארטר', 'העיר העתיקה'];
+const STAGE_NAMES = ['מגדל אייפל והנהר', 'הלובר', 'נוטרדאם', 'מונמארטר', 'העיר העתיקה', 'חיפה'];
 ST = buildParis1();
 G.save = loadSave();
 G.names = loadNames();
@@ -4542,7 +4615,7 @@ const SEAL_NAMES = ['חותם הברזל', 'חותם הצל', 'חותם העור
 const STAGE_POWER = ['boomer', 'bolt', 'ice', null];
 function questInit(){
   const q = (SY().q[G.stage] = SY().q[G.stage] || {});
-  if (G.stage === CITY_STAGE) { cityObj(); return; }
+  if (ST.city) { cityObj(); return; }
   if (G.stage === 0) {
     if (!q.freed) setObj('שחרר את השבוי שמתחת לגשר השני');
     else if (!q.burned) setObj('בחר חיצי אש (סמל הנשק) ושרוף את מחסום העץ המסומן');
@@ -4592,6 +4665,10 @@ function questEvent(ev, obj){
   } else if (ev === 'burned' && !q.burned) {
     q.burned = 1; addCoins(10);
     setObj('הבס את שומר הברזל והחזר את החותם', 'המחסום נשרף');
+  } else if (ev === 'boss' && !q.seal && G.stage >= 4) {      // the Israeli stages: no Paris seal, a clear message and a reward
+    q.seal = 1; addCoins(40); SFX.seal(); ST.freed = true;
+    G.reward = ST.name + ' שוחררה · +40 🪙';
+    setObj('המשך: ' + (STAGE_NAMES[nextStage(G.stage)] || ''), 'הבוס הובס');
   } else if (ev === 'boss' && !q.seal) {
     q.seal = 1;
     if (SY().seals.indexOf(G.stage) < 0) SY().seals.push(G.stage);
@@ -4665,7 +4742,7 @@ function drawShadowGate(){
   if (ST.ending) { const g = cx.createRadialGradient(x, y - 40, 0, x, y - 40, 90); g.addColorStop(0, 'rgba(255,240,200,.6)'); g.addColorStop(1, 'rgba(255,240,200,0)'); cx.globalCompositeOperation = 'lighter'; cx.fillStyle = g; cx.fillRect(x - 90, y - 130, 180, 180); }
   cx.restore();
 }
-function cityData(){ const y = SY(); if (!y.city || typeof y.city !== 'object') y.city = {}; const c=y.city; if(!Array.isArray(c.v))c.v=[];if(!Array.isArray(c.a))c.a=[];if(!c.missions||typeof c.missions!=='object')c.missions={};return c; }
+function cityData(){ const y = SY(), key = (ST && ST.dataKey) || 'city'; if (!y[key] || typeof y[key] !== 'object') y[key] = {}; const c=y[key]; if(!Array.isArray(c.v))c.v=[];if(!Array.isArray(c.a))c.a=[];if(!c.missions||typeof c.missions!=='object')c.missions={};return c; }
 function cityStep(){
   if (!ST.city || G.scene !== 'play') return;
   const p = G.player; if (!p) return;
@@ -4712,9 +4789,9 @@ function cityStep(){
       x = Math.max(G.cam + 16, Math.min(G.cam + VW - 16, x));
       const hy = h.y === undefined ? 232 : h.y;
       const f = makeFoe(kind, x); f.y = hy; f.gy = hy; f.face = p.x >= x ? 1 : -1; f.cd = 40 + Math.random() * 30;
-      const ty = { stall: 'hop', wall: 'hop', rail: 'hop', balcony: 'drop', roofdrop: 'drop' }[h.type] || 'run';
+      const ty = { stall: 'hop', wall: 'hop', rail: 'hop', hedge: 'hop', balcony: 'drop', roofdrop: 'drop' }[h.type] || 'run';
       f.emerge = { type: ty, t: 0, dir: f.face, land: 0 };
-      if (ty === 'hop') f.y = hy - 24;
+      if (ty === 'hop') { f.y = hy - 24; f.emerge.shadowY = hy; }            // lands on its own level, never on a ledge above
       if (ty === 'drop') { f.y = h.top; f.emerge.shadowY = hy; }
       G.foes.push(f); A.foes.push(f);
     }
@@ -4773,6 +4850,7 @@ function drawShortcut(){
   if (!sc.open && G.player && Math.abs(G.player.x - L.x) < 60 && G.player.y < 0 && G.tick % 40 < 28) { cx.font = '700 7px Heebo, sans-serif'; cx.textAlign = 'center'; cx.fillStyle = '#9ff0e0'; cx.fillText('הכה במנוף', lx, L.y - 34); }
 }
 function cityObj(){
+  if (ST.objFn) { ST.objFn(); return; }
   const cd = cityData(), has = id => cd.a.indexOf(id) >= 0;
   if (!has('market')) setObj('חצה את העיר העתיקה: מהרציף דרך המחסנים אל השוק');
   else if (!has('hill') && !has('roofs')) setObj('עלה במעלות הגבעה — או טפס לסמטת הגגות');
@@ -4781,10 +4859,10 @@ function cityObj(){
 }
 function drawCityHud(){
   if (!ST.city) return;
-  const cd = cityData(), im = IMG.citymap;
+  const cd = cityData(), im = ST.mapNodes ? IMG[ST.mapImg] : null;
   if (im) {                                                          // the small map: only places already visited are revealed
     const two = G.players.length > 1, x0 = 6, y0 = 34 + (two ? 26 : 0), w = 92, h = w * im.height / im.width;
-    const NODES = { dock: [0.45, 0.84], wh: [0.74, 0.80], market: [0.46, 0.56], hill: [0.65, 0.42], roofs: [0.36, 0.26], tower: [0.75, 0.12] };
+    const NODES = ST.mapNodes;
     cx.save(); glass(x0 - 2, y0 - 2, w + 4, h + 4, 5);
     cx.beginPath(); cx.rect(x0, y0, w, h); cx.clip();
     cx.globalAlpha = 0.4; cx.drawImage(im, x0, y0, w, h); cx.fillStyle = 'rgba(20,16,30,.35)'; cx.fillRect(x0, y0, w, h); cx.globalAlpha = 1;
@@ -4801,7 +4879,7 @@ function drawCityHud(){
     cx.fillStyle = 'rgba(243,238,226,.95)'; rrect(VW / 2 - w / 2, 54, w, 26, 3); cx.fill();
     cx.strokeStyle = '#23324a'; cx.lineWidth = 1.2; rrect(VW / 2 - w / 2 + 2, 56, w - 4, 22, 2); cx.stroke();
     cx.fillStyle = '#23324a'; cx.fillText(b.name, VW / 2, 73);
-    cx.font = '700 7px Heebo, sans-serif'; cx.fillStyle = '#f3eee2'; cx.strokeStyle = 'rgba(0,0,0,.5)'; cx.lineWidth = 2; cx.strokeText('העיר העתיקה', VW / 2, 90); cx.fillText('העיר העתיקה', VW / 2, 90);
+    cx.font = '700 7px Heebo, sans-serif'; cx.fillStyle = '#f3eee2'; cx.strokeStyle = 'rgba(0,0,0,.5)'; cx.lineWidth = 2; cx.strokeText(ST.name, VW / 2, 90); cx.fillText(ST.name, VW / 2, 90);
     cx.restore();
   }
 }
@@ -4828,11 +4906,11 @@ function worldStep(){
     f.y = sp.y; f.gy = sp.y;
     G.foes.push(f);
   }
-  if (ST.city && !G.boss && ST.bossX && livePlayers().some(p => p.x > ST.bossX - 40) && !((cityData().missions || {}).towerSignal)) {   // the boss waits for the signal mission
-    if (!(G.sigHintT > 0)) { say('קודם השבת את משדר האות שבכניסה לכיכר (ואת הסוחר בשוק)', 150); G.sigHintT = 400; }
+  if (ST.city && ST.bossMission && !G.boss && ST.bossX && livePlayers().some(p => p.x > ST.bossX - 40) && !((cityData().missions || {})[ST.bossMission])) {   // the boss waits for the signal mission
+    if (!(G.sigHintT > 0)) { say(ST.bossHint || 'קודם השבת את משדר האות שבכניסה לכיכר (ואת הסוחר בשוק)', 150); G.sigHintT = 400; }
   }
   if (G.sigHintT > 0) G.sigHintT--;
-  if (!G.boss && ST.bossX && !G.amb && (!ST.bossAfter || cityData().a.indexOf(ST.bossAfter) >= 0) && (!ST.city || (cityData().missions || {}).towerSignal) && livePlayers().some(p => p.x > ST.bossX)) {      // the courtyard seals and the boss walks in
+  if (!G.boss && ST.bossX && !G.amb && (!ST.bossAfter || cityData().a.indexOf(ST.bossAfter) >= 0) && (!ST.city || !ST.bossMission || (cityData().missions || {})[ST.bossMission]) && livePlayers().some(p => p.x > ST.bossX)) {      // the courtyard seals and the boss walks in
     G.locked = true; G.camMin = ST.w - VW;
     G.boss = makeBoss(); G.boss.gy = G.boss.y;
     G.bossIntro = 130;
@@ -5028,6 +5106,11 @@ function drawHides(){
       const fr = ['#e84a2a', '#f2a82a', '#f4d03a', '#5aa83a', '#d8343a'];
       for (let k = 0; k < 14; k++) { cx.fillStyle = fr[k % 5]; cx.beginPath(); cx.arc(x - 42 + k * 5.2, y - 26 + (k % 2) * 2, 2.6, 0, 7); cx.fill(); }
       cx.fillStyle = '#5a3c20'; for (let k = 0; k < 3; k++) cx.fillRect(x - 44 + k * 25, y - 18, 22, 1.5);
+    } else if (h.type === 'hedge') {                                // a clipped garden hedge with white flowers
+      const y = Y0, sw = tell ? Math.sin(t * 0.6) * 1.6 : 0;
+      cx.fillStyle = '#2f5a2a'; rrect(x - 44 + sw, y - 30, 88, 30, 6); cx.fill(); cx.fillStyle = '#3f7236'; rrect(x - 42 + sw, y - 30, 84, 8, 5); cx.fill();
+      cx.fillStyle = '#f2f2ea'; for (let k = 0; k < 12; k++) { cx.beginPath(); cx.arc(x - 38 + k * 7 + sw, y - 6 - (k % 3) * 5, 1.8, 0, 7); cx.fill(); }
+      if (tell) { cx.fillStyle = 'rgba(40,70,30,.8)'; for (let k = 0; k < 4; k++) G.tick % 8 === 0 && G.parts.push({ x: h.x + (Math.random() - 0.5) * 60, y: y - 30, vx: (Math.random() - 0.5) * 0.6, vy: -0.6, life: 18, max: 18, col: '#4a8a3a', g: 0.05, sz: 1.4 }); }
     } else if (h.type === 'alley') {                               // a narrow dark side alley between two walls
       const y = Y0;
       cx.fillStyle = '#c4ad86'; cx.fillRect(x - 30, y - 120, 60, 120);
@@ -6004,21 +6087,23 @@ damageFoe=function(f,dmg,dir,m,hx,hy,attacker,fromDir){
 };
 
 // City missions: explicit interactions, persistent outcomes, one-time rewards.
+function stMissions(){ return ST.missions || (ST.dataKey ? [] : CITY_MISSIONS); }
 const CITY_MISSIONS=[
   {id:'dockLedger',x:1210,y:150,title:'מצא את יומן המשלוחים בגג המחסן',action:'אסוף יומן',reward:15},
   {id:'marketRescue',x:3720,y:232,title:'שחרר את הסוחר ברחוב השוק',action:'שחרר סוחר',reward:25,after:'market'},
   {id:'towerSignal',x:5480,y:40,title:'השבת את משדר האות לפני כיכר המגדל',action:'השבת משדר',reward:30,requires:'marketRescue'}
 ];
-function missionNear(){if(!ST.city||G.scene!=='play'||!G.player?.alive)return null;const p=G.player,c=cityData();return CITY_MISSIONS.find(m=>!c.missions[m.id]&&Math.abs(p.x-m.x)<64&&Math.abs(p.y-m.y)<44)||null;}
+function missionNear(){if(!ST.city||G.scene!=='play'||!G.player?.alive)return null;const p=G.player,c=cityData();return stMissions().find(m=>!c.missions[m.id]&&Math.abs(p.x-m.x)<64&&Math.abs(p.y-m.y)<44)||null;}
 function completeCityMission(id){
-  const m=CITY_MISSIONS.find(m=>m.id===id),near=missionNear(),c=cityData();
+  const m=stMissions().find(m=>m.id===id),near=missionNear(),c=cityData();
   if(!m||!near||near.id!==id||c.missions[id])return false;
-  if(m.after&&!c.a.includes(m.after)){big('קודם נטרל את המארב בשוק',90);say('האויבים בשוק עדיין שומרים על הסוחר',140);SFX.empty&&SFX.empty();return false;}
-  if(m.requires&&!c.missions[m.requires]){big('קודם שחרר את הסוחר ברחוב השוק',100);say('המשדר נפתח רק אחרי שהסוחר משוחרר — חזור לשוק (גם בקיצור הדרך מהגגות)',200);SFX.empty&&SFX.empty();return false;}
+  if(m.after&&!c.a.includes(m.after)){big(m.needAfter||'קודם נטרל את המארב בשוק',90);say('האויבים בשוק עדיין שומרים על הסוחר',140);SFX.empty&&SFX.empty();return false;}
+  if(m.requires&&!c.missions[m.requires]){big(m.needReq||'קודם שחרר את הסוחר ברחוב השוק',100);say(m.needReqHint||'המשדר נפתח רק אחרי שהסוחר משוחרר — חזור לשוק (גם בקיצור הדרך מהגגות)',200);SFX.empty&&SFX.empty();return false;}
   c.missions[id]=true;addCoins(m.reward,m.x,m.y-28);G.check={x:m.x,y:m.y};SFX.unlock();
   if(id==='dockLedger'){SY().unlocked.fire=true;G.players.forEach(p=>gainEnergy(p,30));big('היומן נמצא · חיצי אש נפתחו',95);}
   if(id==='marketRescue'){SY().unlocked.boomer=true;big('הסוחר שוחרר · נקודת ביקורת נשמרה',95);}
   if(id==='towerSignal')big('משדר הצללים הושבת!',95);
+  if(m.unlock){SY().unlocked[m.unlock]=true;}if(m.done)big(m.done,95);
   cityObj();writeSave(G.check);return true;
 }
 // ---- the action button: missions, gates, levers, cages, bells — whatever is next to you ----
@@ -6049,14 +6134,14 @@ function actionUi(){                                         // every frame: the
 }
 const baseCityObj=cityObj;
 cityObj=function(){
-  const c=cityData(),m=CITY_MISSIONS.find(m=>!c.missions[m.id]);
+  const c=cityData(),m=stMissions().find(m=>!c.missions[m.id]);
   if(m){setObj(m.title);return;}baseCityObj();
 };
 // The upper square can be reached early, but its boss only starts after the signal mission.
 const baseAdventureStep=adventureStep;
 adventureStep=function(){
   let bx;
-  if(ST.city&&!cityData().missions.towerSignal){bx=ST.bossX;ST.bossX=Infinity;}
+  if(ST.city&&ST.bossMission&&!cityData().missions[ST.bossMission]){bx=ST.bossX;ST.bossX=Infinity;}
   try{return baseAdventureStep();}finally{if(bx!==undefined)ST.bossX=bx;}
 };
 
@@ -6103,11 +6188,11 @@ function drawTownspeople(){
 }
 function drawMissionProps(){
   if(!ST.city)return;const cd=cityData();
-  for(const m of CITY_MISSIONS){const x=m.x-G.cam;if(x<-50||x>VW+50)continue;const done=cd.missions[m.id],y=m.y;
+  for(const m of stMissions()){const x=m.x-G.cam;if(x<-50||x>VW+50)continue;const done=cd.missions[m.id],y=m.y;
     cx.save();
-    if(m.id==='dockLedger'){cx.fillStyle='#8c6643';cx.fillRect(x-9,y-14,18,14);cx.fillStyle='#d5c29c';cx.fillRect(x-5,y-19,10,8);}
-    if(m.id==='marketRescue'){cx.fillStyle='#b5a38b';cx.fillRect(x-5,y-30,10,23);cx.fillStyle='#c09d7c';cx.beginPath();cx.arc(x,y-35,4,0,7);cx.fill();if(!done){cx.strokeStyle='#42413d';cx.lineWidth=1.7;for(let k=-12;k<=12;k+=6){cx.beginPath();cx.moveTo(x+k,y-47);cx.lineTo(x+k,y);cx.stroke();}}}
-    if(m.id==='towerSignal'){cx.fillStyle='#393e43';cx.fillRect(x-10,y-30,20,30);cx.strokeStyle='#575d5b';cx.lineWidth=2;cx.beginPath();cx.moveTo(x,y-30);cx.lineTo(x,y-60);cx.stroke();cx.fillStyle=done?'#71957a':'#cc8773';cx.beginPath();cx.arc(x,y-60,3,0,7);cx.fill();}
+    if((m.look||m.id)==='dockLedger'){cx.fillStyle='#8c6643';cx.fillRect(x-9,y-14,18,14);cx.fillStyle='#d5c29c';cx.fillRect(x-5,y-19,10,8);}
+    if((m.look||m.id)==='marketRescue'){cx.fillStyle='#b5a38b';cx.fillRect(x-5,y-30,10,23);cx.fillStyle='#c09d7c';cx.beginPath();cx.arc(x,y-35,4,0,7);cx.fill();if(!done){cx.strokeStyle='#42413d';cx.lineWidth=1.7;for(let k=-12;k<=12;k+=6){cx.beginPath();cx.moveTo(x+k,y-47);cx.lineTo(x+k,y);cx.stroke();}}}
+    if((m.look||m.id)==='towerSignal'){cx.fillStyle='#393e43';cx.fillRect(x-10,y-30,20,30);cx.strokeStyle='#575d5b';cx.lineWidth=2;cx.beginPath();cx.moveTo(x,y-30);cx.lineTo(x,y-60);cx.stroke();cx.fillStyle=done?'#71957a':'#cc8773';cx.beginPath();cx.arc(x,y-60,3,0,7);cx.fill();}
     cx.font='bold 10px Heebo,sans-serif';cx.textAlign='center';cx.fillStyle=done?'#a8d8b6':'#ffe3a0';cx.fillText(done?'✓':'◇',x,y-66);
     cx.restore();
   }
