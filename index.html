@@ -283,6 +283,7 @@ html,body{overscroll-behavior:none}
   <div class="rail">
     <label>אפקטים <input type="range" id="vol" min="0" max="100" step="5" value="55"><span id="volV" style="font-family:var(--font-num)">55%</span></label>
     <label>מוזיקה <input type="range" id="mus" min="0" max="100" step="5" value="50"><span id="musV" style="font-family:var(--font-num)">50%</span></label>
+    <label>סגנון מוזיקה <select id="scoreTrack" class="ghost"><option value="auto">לפי שלב</option><option value="0">מיתרים וקצב</option><option value="1">פסנתר מסתורי</option><option value="2">פעמונים ותופים</option></select></label>
     <label>רעידת מסך <input type="range" id="shk" min="0" max="100" step="5" value="100"><span id="shkV" style="font-family:var(--font-num)">100%</span></label>
     <label><input type="checkbox" id="flashOff"> הפחתת הבהובים</label>
     <label><input type="checkbox" id="crt"> מראה רטרו (CRT)</label>
@@ -293,12 +294,6 @@ html,body{overscroll-behavior:none}
     <button class="ghost" id="btnReset">חזרה למסך הפתיחה</button>
   </div>
 
-  <p class="notes">
-    <b>שליטה:</b> <code>← →</code> תנועה · <code>↑</code> קפיצה · <code>↓</code> התכופפות · <code>רווח</code> ירי · <code>Z</code> או <code>A</code> אגרוף (אגרוף, אגרוף, בעיטה) · <code>X</code> או <code>S</code> בעיטה (גם באוויר) · <code>C</code> החלפת נשק · <code>Shift</code> או <code>D</code> חסימה · <code>Q</code> גלגול · <code>P</code> השהיה · <code>Enter</code> אישור.
-    <b>2 שחקנים:</b> בוחרים "שחקנים: 2" במסך הפתיחה. 1P: <code>חצים</code> · <code>J</code> ירי · <code>K</code> אגרוף · <code>L</code> בעיטה · <code>O</code> חסימה · <code>U</code> גלגול · <code>I</code> נשק. 2P: <code>W A S D</code> · <code>H</code> או <code>רווח</code> ירי · <code>F</code> אגרוף · <code>G</code> בעיטה · <code>E</code> חסימה · <code>Q</code> גלגול · <code>R</code> נשק. החיים משותפים.
-    <b>חצים של קשתים:</b> קו אדום מהבהב מסמן את גובה הירי — גבוה: התכופף, נמוך: קפוץ.
-    <b>גרפיקה:</b> הדמויות חתוכות מדפי העיצוב (רקע, כותרות וקווי בסיס הוסרו, עוגן רגליים מיושר). פריימי המעבר נוצרים מהפוזות האלה בהטיה, כיווץ וסיבוב. <b>פגיעות:</b> hitbox מול hurtbox בכל פריים פעיל, עם startup / active / recovery, הדיפה, hit-stop ו-0.9 שניות חסינות אחרי פגיעה.
-  </p>
 </div>
 
 <script src="sprite-limbs.js"></script>
@@ -419,6 +414,9 @@ if (!S.v27) {                                 // the original drawn fighters are
 }
 function saveS(){ try { localStorage.setItem('yoru.set', JSON.stringify(S)); } catch (e) {} }
 
+const scoreTrack = document.getElementById('scoreTrack');
+scoreTrack.value = S.scoreTrack || 'auto';
+scoreTrack.addEventListener('change', () => { S.scoreTrack=scoreTrack.value;saveS(); });
 const cv = document.getElementById('game');
 const cx = cv.getContext('2d');
 
@@ -1053,8 +1051,8 @@ function ac(){
     const comp = AC.createDynamicsCompressor();             // keeps several hits at once from clipping
     comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.18;
     comp.connect(AC.destination);
-    master = AC.createGain(); master.gain.value = S.muted ? 0 : S.vol; master.connect(comp);
-    musBus = AC.createGain(); musBus.gain.value = S.muted ? 0 : S.mus; musBus.connect(AC.destination);
+    master = AC.createGain(); master.gain.value = S.muted || S.sfxOff ? 0 : S.vol; master.connect(comp);
+    musBus = AC.createGain(); musBus.gain.value = S.muted || S.musOff ? 0 : S.mus * 0.55; musBus.connect(AC.destination);
     loadSounds();
   } catch (e) { AC = null; }
   return AC;
@@ -1321,15 +1319,13 @@ function jackTickEmbedded(){
   return true;
 }
 function musicTick(){
-  const hasFile = jackTick();
-  if (!AC || !MUS.on || S.mus <= 0) return;
-  if (hasFile && (!MUS.boss || (MUS.cur && MUS.cur.type === 'file'))) return;   // a real track is playing; the synth is only a last fallback
+  if (!AC || !MUS.on || S.muted || S.musOff || S.mus <= 0 || G.scene === 'pause') return;
   musFx(); musBuses();
   // intensity: exploring (0) / fighting (1); the drum layer glides between them
   const fighting = G.scene === 'play' && (G.boss || G.foes.some(f => f.alive && Math.abs(f.x - G.cam - VW / 2) < VW * 0.7));
   const want = fighting ? 1 : 0.32;
   if (MUS.int !== want) { MUS.int = want; MUS.drumBus.gain.setTargetAtTime(want, AC.currentTime, 0.8); }
-  const wantTr = MUS.boss ? BOSS_TRACK : (TRACKS[G.stage] || TRACKS[0]);
+  const wantTr = MUS.boss ? BOSS_TRACK : (TRACKS[S.scoreTrack] || TRACKS[G.stage] || TRACKS[0]);
   if (!MUS.tr) MUS.tr = wantTr;
   const tr = MUS.tr, spb = 60 / tr.bpm / 4;
   if (MUS.next < AC.currentTime) MUS.next = AC.currentTime + 0.06;
@@ -5602,7 +5598,6 @@ function frame(now){
   const status=R3.hero?.status;
   const statusText=R3.on()?'מודל זמני CC0 · חסרות אנימציות ייעודיות':S.r3?(status==='error'?'טעינת המודל נכשלה; המשחק ממשיך במצב המקורי':status==='loading'?'טוען מודל…':G.two?'תלת־ממד זמין לשחקן יחיד':'מודל מוכן'):'מצב ציור מקורי';
   if(modelStatus.textContent!==statusText)modelStatus.textContent=statusText;
-  trialButton.hidden = G.scene !== 'title';
   musicTick();
   menuStep();
   if (G.scene === 'play') {
@@ -5693,7 +5688,7 @@ function applyQuality(){
 }
 function applyMute(){
   if (master) master.gain.value = S.muted || S.sfxOff ? 0 : S.vol;
-  if (musBus) musBus.gain.value = S.muted || S.musOff ? 0 : S.mus;
+  if (musBus) musBus.gain.value = S.muted || S.musOff ? 0 : S.mus * 0.55;
   elMute.textContent = S.muted ? '🔇 מושתק' : '🔊 השתק';
   const sb = document.getElementById('btnSnd'); if (sb) sb.firstElementChild.textContent = S.muted ? '🔇' : '🔊';
   const pm = document.getElementById('pmMusic'), ps = document.getElementById('pmSfx');
@@ -5899,7 +5894,7 @@ function startMotionTrial(){
 const trialButton=document.createElement('button'); trialButton.textContent='ניסוי תנועה · GLB זמני';
 trialButton.id='motionTrial'; trialButton.style.cssText='position:fixed;bottom:8px;left:8px;z-index:30;font:14px sans-serif;padding:8px;border-radius:8px';
 const modelStatus=document.createElement('span'); modelStatus.id='modelStatus'; modelStatus.style.cssText='font-size:12px;color:#a8b5cd;margin:0 8px';elR3.parentElement.after(modelStatus);
-trialButton.onclick=()=>{trialButton.hidden=true;startMotionTrial();}; document.body.appendChild(trialButton);
+trialButton.onclick=()=>{trialButton.hidden=true;startMotionTrial();}; 
 // Original 2D ninjas, three selectable techniques, fixed-step VFX and damage.
 const NINJA_POWERS = {
   wave: {name:'גל צ׳י', icon:'◉', color:'#77dcff', detail:'מכת אנרגיה מהיד'},
@@ -6059,7 +6054,7 @@ for(const [index,id] of Object.keys(NINJA_POWERS).entries()){
   powerToolbar.appendChild(button);powerButtons.push(button);
 }
 const powerHint=document.createElement('span');powerHint.style.cssText='font:13px Heebo,sans-serif;color:#b8c5db;align-self:center';powerHint.textContent='בחר כוח · מלא את המד · הפעל ב־E או ⚡';powerToolbar.appendChild(powerHint);
-document.querySelector('.screen').after(powerToolbar);
+
 function choosePower(id){if(!NINJA_POWERS[id])return;S.powerChoice=id;if(G.player)G.player.powerChoice=id;saveS();refreshPowerButtons();}
 function refreshPowerButtons(){
   const id=selectedPower(G.player);for(const b of powerButtons){const selected=b.dataset.power===id;b.setAttribute('aria-pressed',String(selected));b.style.borderColor=selected?NINJA_POWERS[id].color:'#48536e';b.style.background=selected?'#22314b':'#121a2c';}
@@ -6081,7 +6076,7 @@ startMotionTrial=function(){
 trialButton.textContent='נינג׳ות וכוחות · משחק ניסיון';
 elR3.parentElement.hidden=true;modelStatus.hidden=true;
 const rechargeButton=document.createElement('button');rechargeButton.type='button';rechargeButton.textContent='טען כוח בניסיון';rechargeButton.id='rechargePower';rechargeButton.style.cssText=powerButtons[0].style.cssText;
-rechargeButton.onclick=()=>{if(G.trial&&G.scene==='play'){G.storm=null;for(const p of G.players){p.pw=100;p.pwT=0;p.powerCast=null;p.castT=0;if(p.state==='focus')p.state='idle';}}rechargeButton.blur();};powerToolbar.appendChild(rechargeButton);
+rechargeButton.onclick=()=>{if(G.trial&&G.scene==='play'){G.storm=null;for(const p of G.players){p.pw=100;p.pwT=0;p.powerCast=null;p.castT=0;if(p.state==='focus')p.state='idle';}}rechargeButton.blur();};
 const techniqueMenu=menuStep;
 menuStep=function(){techniqueMenu();rechargeButton.hidden=!G.trial||G.scene!=='play';powerToolbar.hidden=!['title','play','pause'].includes(G.scene);};
 
@@ -6101,7 +6096,7 @@ for(const [id,power]of Object.entries(NINJA_POWERS)){
   const button=document.createElement('button');button.type='button';button.dataset.mobilePower=id;button.textContent=power.icon+' '+power.name+' · '+power.detail;button.style.borderColor=power.color;
   button.onclick=()=>{choosePower(id);closeMobilePower();};powerCard.appendChild(button);
 }
-const mobileRecharge=document.createElement('button');mobileRecharge.type='button';mobileRecharge.textContent='טען כוח מחדש בניסיון';mobileRecharge.onclick=()=>{closeMobilePower();rechargeButton.click();};powerCard.appendChild(mobileRecharge);
+const mobileRecharge=document.createElement('button');mobileRecharge.type='button';mobileRecharge.textContent='טען כוח מחדש בניסיון';mobileRecharge.onclick=()=>{closeMobilePower();rechargeButton.click();};
 const powerClose=document.createElement('button');powerClose.type='button';powerClose.textContent='חזרה למשחק';powerClose.onclick=closeMobilePower;powerCard.appendChild(powerClose);
 document.querySelector('.screen').appendChild(mobilePowerPanel);
 mobilePowerButton.onclick=()=>{
