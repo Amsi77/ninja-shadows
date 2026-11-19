@@ -11,7 +11,7 @@ const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzi
 const raw=new DataView(await new Response(stream).arrayBuffer());let offset=0;
 const count=raw.getUint32(offset,true);offset+=4;
 function weatheredMaterial(color,index){
- const material=new THREE.MeshStandardMaterial({color:index<6 ? new THREE.Color(color[0]*1.02,color[1]*.83,color[2]*.67) : new THREE.Color(...color),roughness:.91,metalness:index===9?.45:0,side:THREE.DoubleSide});
+ const material=new THREE.MeshStandardMaterial({color:index<6 ? new THREE.Color(color[0]*.82,color[1]*.60,color[2]*.39) : new THREE.Color(...color),roughness:.91,metalness:index===9?.45:0,side:THREE.DoubleSide});
  if(index>5)return material;
  material.onBeforeCompile=shader=>{
  shader.vertexShader='varying vec3 vStoneWorld;\n'+shader.vertexShader;
