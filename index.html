@@ -447,6 +447,7 @@ const CHARS = {
   boss:    { label: 'מסכת הברזל' },
   warden:  { label: 'שומר הברזל' },
   shadow:  { label: 'אדון הצללים' },
+  beastie: { label: 'ביסטי' },
   chain:   { label: 'קוצר השרשרת' },
   ember:   { label: 'ניב הגחלים' },
   pulse:   { label: 'הדופק הכחול' },
@@ -806,7 +807,7 @@ function loadSprites(){
     im.onload = () => { IMG[key] = im; res(); };
     im.onerror = () => rej(new Error('sprite failed: ' + key));
     im.src = ATLAS.img[key];
-  }))).then(() => { for (const key of Object.keys(CHARS).filter(k=>k!=='carmel')) composeChar(key, IMG[key]); SHEET.carmel=SHEET.boss; });
+  }))).then(() => { for (const key of Object.keys(CHARS).filter(k=>k!=='carmel'&&k!=='beastie')) composeChar(key, IMG[key]); SHEET.carmel=SHEET.boss; SHEET.beastie=SHEET.shadow; });
 }
 
 // ===================================================================
@@ -1683,9 +1684,9 @@ function eliteRoll(f){                                    // about one foe in ei
 }
 function makeBoss(){
   const d = DIFF[G.diff];
-  const hp = Math.round(1.6 * ({ warden: 300, shadow: 280, raven: 300, emperor: 440, breaker: 300 }[ST.bossKey] || 340) * d.hpK * (G.two ? 1.5 : 1));
+  const hp = Math.round(1.6 * ({ warden: 300, shadow: 280, raven: 300, emperor: 440, breaker: 300, beastie: 185 }[ST.bossKey] || 340) * d.hpK * (G.two ? 1.5 : 1));
   return {
-    kind: 'boss', key: ST.bossKey || 'boss', sc: ({ raven: 1.22, emperor: 1.18, breaker: 1.4 }[ST.bossKey] || 1), x: ST.w + 40, y: ST.bossY || ST.solids[ST.solids.length - 3].y, vx: 0, vy: 0, face: -1,
+    kind: 'boss', key: ST.bossKey || 'boss', sc: ({ raven: 1.22, emperor: 1.18, breaker: 1.4, beastie: 1.1 }[ST.bossKey] || 1), x: ST.w + 40, y: ST.bossY || ST.solids[ST.solids.length - 3].y, vx: 0, vy: 0, face: -1,
     hp: hp, hpMax: hp, dmg: 16 * d.dmgK,
     an: 'idle', af: 0, at: 0, state: 'idle', stun: 0,
     cd: 70, mf: 0, attack: null, hitDone: false, lastAttack: null,
@@ -2369,6 +2370,7 @@ function playerStep(p){
 // ===================================================================
 function damageFoe(f, dmg, dir, m, hx, hy, attacker, fromDir){
   f.blockedLast = false;
+  if(f.key==='beastie' && m.proj && !f.exposed) dmg*=.38;
   if (f.emerge) { f.blockedLast = true; return; }                 // still stepping out of hiding
   if (f.kind === 'echodup') { smokePuff(f); f.alive = false; f.deadT = 0; f.hp = 0; pop(f.x, f.y - 50, 'כפיל!', '#c8a0ff'); SFX.shield(); return; }
   if (f.kind === 'shield' && f.alive && !(f.guardT > 0) && f.state !== 'hurt' && f.state !== 'down') {
@@ -3005,6 +3007,100 @@ function endFoeAttack(f){
 }
 
 // ---- boss: three attacks, each with its own tell and its own answer ----
+function beastieStep(b,p){
+  if(!p)return;
+  const left=Math.max(G.cam+38,ST.w-VW+43),right=ST.w-49;
+  const dist=Math.abs(p.x-b.x);
+  const panic=b.hp<b.hpMax*.5;
+  if(b.bomb){
+    const bomb=b.bomb;
+    bomb.age++;
+    if(bomb.age===bomb.fuse){
+      SFX.heavy();
+      burst(bomb.x,bomb.y-6,21,'#ffc06e',2.8,.54);
+      for(const q of livePlayers()){
+        const box=hurtBox(q);
+        if(q.x>G.cam+10 && q.x<G.cam+VW-10 && box.y+box.h>bomb.y-30 &&
+           box.x<bomb.x+bomb.radius && box.x+box.w>bomb.x-bomb.radius)
+          hurtPlayer(q,b.dmg,bomb.x,true);
+      }
+    }
+    if(bomb.age>bomb.fuse+12)b.bomb=null;
+  }
+  if(b.mode==='tell'){
+    if(++b.modeT<33)return;
+    setAnim(b,'volley',true);
+    const away=p.x<b.x?1:-1;
+    const edge=away>0?right:left;
+    b.evadeFrom=b.x;
+    b.evadeTo=Math.abs(edge-b.x)<42
+      ? Math.max(left,Math.min(right,p.x-away*68))
+      : Math.max(left,Math.min(right,b.x+away*(panic?112:91)));
+    const x=b.aim;
+    b.bomb={x,y:groundAt(x,b.gy),fromX:b.x,fromY:b.y-47,age:0,fuse:61,radius:37};
+    SFX.swing();
+    b.mode='throw';b.modeT=0;
+    return;
+  }
+  if(b.mode==='throw'){
+    if(++b.modeT<9)return;
+    b.mode='evade';b.modeT=0;
+    b.face=Math.sign(b.evadeTo-b.evadeFrom)||b.face;
+    setAnim(b,'leap',true);
+    return;
+  }
+  if(b.mode==='evade'){
+    const t=Math.min(1,++b.modeT/29);
+    b.x=b.evadeFrom+(b.evadeTo-b.evadeFrom)*t;
+    b.y=b.gy-Math.sin(Math.PI*t)*65;
+    if(t===1){
+      b.y=b.gy;
+      b.mode='recover';b.modeT=0;b.exposed=true;
+      setAnim(b,'landing',true);
+      pop(b.x,b.y-65,'פתוח לקומבו!', '#bff4cb');
+    }
+    return;
+  }
+  if(b.mode==='recover'){
+    b.face=p.x<b.x?-1:1;
+    if(++b.modeT<(panic?105:122))return;
+    b.exposed=false;b.mode='seek';b.modeT=0;b.cd=panic?16:26;
+  }
+  b.face=p.x<b.x?-1:1;
+  if(b.cd>0)b.cd--;
+  if(dist>142){
+    b.x=Math.max(left,Math.min(right,b.x+b.face*1.65));
+    setAnim(b,'run');
+  } else if(dist<67 && b.cd>0){
+    b.x=Math.max(left,Math.min(right,b.x-b.face*1.4));
+    setAnim(b,'run');
+  } else setAnim(b,'idle');
+  if(b.cd<=0 && !b.bomb && dist<150){
+    b.mode='tell';b.modeT=0;
+    b.aim=Math.max(G.cam+29,Math.min(G.cam+VW-29,p.x));
+    setAnim(b,'windup',true);
+    SFX.draw();
+    say('ביסטי מכין פצצה · צא מהסימון',80);
+  }
+}
+function drawBeastieBomb(b){
+  if(!b.bomb && b.mode!=='tell')return;
+  const bomb=b.bomb;
+  if(bomb && bomb.age>bomb.fuse+8)return;
+  const x=bomb?bomb.x:b.aim,y=bomb?bomb.y:groundAt(x,b.gy),r=bomb?bomb.radius:37;
+  const u=bomb?Math.min(1,bomb.age/32):0;
+  cx.save();
+  cx.fillStyle=bomb&&bomb.age>bomb.fuse-16?'#f75d4759':'#ffb45a31';
+  cx.strokeStyle=bomb&&bomb.age>bomb.fuse-16?'#ff6b53':'#ffce7e';
+  cx.lineWidth=1.7;
+  cx.beginPath();cx.ellipse(x-G.cam,y-2,r,7,0,0,Math.PI*2);cx.fill();cx.stroke();
+  if(bomb&&bomb.age<=bomb.fuse){
+    const bx=bomb.fromX+(x-bomb.fromX)*u,by=bomb.fromY+(y-4-bomb.fromY)*u-Math.sin(Math.PI*u)*48;
+    cx.fillStyle='#352e3b';cx.beginPath();cx.arc(bx-G.cam,by,5,0,Math.PI*2);cx.fill();cx.stroke();
+    cx.fillStyle='#ffde86';cx.fillRect(bx-G.cam+2,by-7,2,2);
+  }
+  cx.restore();
+}
 function bossStep(b){
   b.gy = groundAt(b.x, b.y);
   const p = pickTarget(b), d = DIFF[G.diff];
@@ -3027,6 +3123,7 @@ function bossStep(b){
   if (b.phase === 1 && b.hp < b.hpMax * 0.5) { b.phase = 2; big('זעם!', 60); trauma(0.5); }
   const dx = p.x - b.x, adx = Math.abs(dx);
   const k = d.tellK * (b.phase === 2 ? 0.82 : 1);
+  if (b.key === 'beastie') { beastieStep(b,p); return; }
   if (b.key === 'warden') { wardenStep(b, p, dx, adx, k); return; }
   if (b.key === 'shadow') { shadowStep(b, p, dx, adx, k); return; }
   if (b.key === 'raven') { ravenStep(b, p, dx, adx, k); return; }
@@ -4341,7 +4438,7 @@ function buildCity(){                         // the Old City (harbour to hillto
   const steps = (x0, y0, n, run, rise) => { const a = []; for (let i = 0; i < n; i++) a.push(S(x0 + i * run, y0 - rise * (i + 1), run + 1, 232 - (y0 - rise * (i + 1)) + 40)); return a; };
   return parisBase({ id: 0, name: 'העיר העתיקה', bg: 'city', w: 6600, city: true, camY: true, bossMission: 'towerSignal', mapImg: 'citymap',
     mapNodes: { dock: [0.45, 0.84], wh: [0.74, 0.80], market: [0.46, 0.56], hill: [0.65, 0.42], roofs: [0.36, 0.26], tower: [0.75, 0.12] },
-    bossX: 6020, bossY: 40, bossKey: 'breaker', bossAfter: 'tower',
+    bossX: 6020, bossY: 40, bossKey: 'beastie', bossAfter: 'tower',
     zones: [
       { id: 'dock',   name: 'רציף הדייגים', x0: 0,    x1: 1500, bg: 'city1' },
       { id: 'wh',     name: 'סמטת המחסנים', x0: 1500, x1: 2700, bg: 'city2' },
@@ -4377,7 +4474,7 @@ function buildCity(){                         // the Old City (harbour to hillto
     hides: [                                                     // where the ambushers wait, drawn as part of the street
       { id: 'a1', type: 'arch', x: 880 }, { id: 'a2', type: 'arch', x: 990 },
       { id: 'd0', type: 'door', x: 1660, deco: 1 }, { id: 'd1', type: 'door', x: 2200 }, { id: 'd2', type: 'door', x: 2520, deco: 1 },
-      { id: 's1', type: 'stall', x: 3125 }, { id: 'al', type: 'alley', x: 3300 }, { id: 's2', type: 'stall', x: 3455, deco: 1 },
+      { id: 's1', type: 'stall', x: 3130 }, { id:'mWest', type:'alley', x:2860 }, { id:'mHigh', type:'perch', x:3100, y:178 }, { id:'mRoof', type:'roofdrop', x:3290, y:F, top:110 }, { id: 'al', type: 'alley', x: 3300 }, { id: 's2', type: 'stall', x: 3455, deco: 1 },
       { id: 'bal', type: 'balcony', x: 4690, y: 136, top: 60 }, { id: 'wl', type: 'wall', x: 4560, y: 136 },
       { id: 'rd', type: 'roofdrop', x: 4900, y: -60, top: -170 }, { id: 'rl', type: 'rail', x: 4820, y: -60 },
       { id: 't1', type: 'arch', x: 5520, y: 40 }, { id: 't2', type: 'alley', x: 5720, y: 40 }, { id: 't3', type: 'door', x: 5900, y: 40 }, { id: 't4', type: 'roofdrop', x: 5800, y: 40, top: -90 }
@@ -4385,7 +4482,7 @@ function buildCity(){                         // the Old City (harbour to hillto
     ambushes: [
       { id: 'dock', x: 760, hint: 'צללים זזים בתוך הקשתות…', sets: [[['grunt', 'a1'], ['agile', 'a2']], [['grunt', 'a2'], ['grunt', 'a1'], ['thrower', 'a2']]] },
       { id: 'door', x: 2040, hint: 'דלת המחסן רועדת!', sets: [[['grunt', 'd1'], ['viper', 'd1'], ['grunt', 'd1']], [['agile', 'd1'], ['grunt', 'd1']]] },
-      { id: 'market', x: 3010, hint: 'הווילון של הדוכן זז…', sets: [[['grunt', 's1'], ['agile', 'al'], ['grunt', 'al']], [['agile', 's1'], ['viper', 'al']]] },
+      { id: 'market', x: 3010, hint: 'מארב בשוק · תוקפים משני הצדדים ומעליך!', chain: 1, rapid: 1, sets: [[['grunt','mWest'],['agile','s1'],['archer','mHigh'],['grunt','mRoof']], [['shield','mWest'],['agile','al'],['archer','mHigh'],['grunt','mRoof'],['viper','s1']]] },
       { id: 'hill', x: 4520, y: 136, hint: 'צל נופל על משטח המדרגות!', sets: [[['agile', 'bal'], ['grunt', 'wl'], ['grunt', 'bal']], [['grunt', 'bal'], ['viper', 'wl']]] },
       { id: 'roofs', x: 4700, y: -60, hint: 'אבק נושר מהגג שמעליך…', sets: [[['agile', 'rd'], ['grunt', 'rl']], [['grunt', 'rd'], ['agile', 'rl'], ['thrower', 'rl']]] },
       { id: 'tower', x: 5640, y: 40, hint: 'תגבורת מכל הכניסות!', chain: 1, sets: [[['grunt', 't1'], ['agile', 't3'], ['grunt', 't2']], [['viper', 't2'], ['grunt', 't4'], ['brute', 't3'], ['agile', 't1']]] }
@@ -4768,7 +4865,7 @@ function cityStep(){
       if (a.done || cd.a.indexOf(a.id) >= 0 || p.x < a.x || p.x > a.x + 400 || Math.abs(p.y - (a.y === undefined ? 232 : a.y)) > 18) continue;   // only on the ambush's own level
       const set = a.chain ? a.sets[0] : a.sets[a.pick];
       G.amb = { a: a, set: set, wave: 0, hides: set.map(e => e[1]), state: 'tell', t: 0, i: 0, foes: [], cam: G.cam, camMin: G.camMin };
-      G.camMin = G.cam; say(a.hint, 70);
+      G.camMin = G.cam; say(a.hint, 70); if(a.rapid)SFX.go();
       break;
     }
     if (ST.exitX && p.x > ST.exitX && !G.foes.some(o => o.alive && onScreen(o.x, 0))) {
@@ -4789,26 +4886,28 @@ function cityStep(){
     return;
   }
   if (A.state === 'spawn') {
-    if (A.t % 16 === 1 && A.i < A.set.length) {
+    if (A.t % (A.a.rapid ? 5 : 16) === 1 && A.i < A.set.length) {
       const [kind, hid] = A.set[A.i++], h = ST.hides.find(q => q.id === hid);
       if (h.type === 'door') { h.open = true; SFX.gate && SFX.gate(); }
       let x = h.x;
       if (Math.abs(p.x - x) < 40) x = p.x + (x >= p.x ? 1 : -1) * 52;                  // never on top of the player
       x = Math.max(G.cam + 16, Math.min(G.cam + VW - 16, x));
       const hy = h.y === undefined ? 232 : h.y;
-      const f = makeFoe(kind, x); f.y = hy; f.gy = hy; f.face = p.x >= x ? 1 : -1; f.cd = 40 + Math.random() * 30;
+      const f = makeFoe(kind, x); f.y = hy; f.gy = hy; f.face = p.x >= x ? 1 : -1; f.cd = A.a.rapid ? 48 + (A.i % 3) * 11 : 40 + Math.random() * 30;
+      if(h.type==='perch'){G.foes.push(f);A.foes.push(f);} else {
       const ty = { stall: 'hop', wall: 'hop', rail: 'hop', hedge: 'hop', balcony: 'drop', roofdrop: 'drop' }[h.type] || 'run';
       f.emerge = { type: ty, t: 0, dir: f.face, land: 0 };
       if (ty === 'hop') { f.y = hy - 24; f.emerge.shadowY = hy; }            // lands on its own level, never on a ledge above
       if (ty === 'drop') { f.y = h.top; f.emerge.shadowY = hy; }
       G.foes.push(f); A.foes.push(f);
+      }
     }
     if (A.i >= A.set.length) A.state = 'fight';
     return;
   }
   if (A.state === 'fight' && !A.foes.some(o => o.alive) && A.a.chain && A.wave + 1 < A.a.sets.length) {   // the next group comes in
     A.wave++; A.set = A.a.sets[A.wave]; A.hides = A.set.map(e => e[1]); A.state = 'tell'; A.t = 0; A.i = 0; A.foes = [];
-    say('עוד מגיעים!', 60); return;
+    say(A.a.rapid?'מארב בשוק · גל '+(A.wave+1)+' מתוך '+A.a.sets.length:'עוד מגיעים!', 60); return;
   }
   if (A.state === 'fight' && !A.foes.some(o => o.alive)) {
     A.a.done = true; cd.a.push(A.a.id); G.camMin = A.camMin; G.amb = null; cityObj();
@@ -5536,6 +5635,7 @@ function frame(now){
     cx.translate(0, -Math.round((G.camY || 0) * SC) / SC);
     drawWorld();
     drawEntities();
+    if(G.boss?.key==='beastie' && G.boss.alive) drawBeastieBomb(G.boss);
     cx.restore();
     postFX();
     drawHud();
