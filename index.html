@@ -678,6 +678,42 @@ const RECIPE = {
   blue: heroRecipe('punch', 'bow', false), red: heroRecipe('throw', 'throw', true),
   grunt: foeRecipe(), thrower: foeRecipe(), archer: foeRecipe(), boss: foeRecipe(), warden: wardenRecipe(), shadow: shadowRecipe(), chain: chainRecipe(), ember: emberRecipe(), pulse: pulseRecipe(), frost: frostRecipe(), drummer: drummerRecipe(), sguard: guardRecipe(), breaker: breakerRecipe(), viper: viperRecipe(), striker: strikerRecipe(), echo: echoRecipe(), raven: ravenRecipe(), emperor: emperorRecipe()
 };
+// richer boss motion from the drawn poses: anticipation, follow-through, recovery, a taunt and a three-step fall
+(function enrichBosses(){
+  const fall3 = (pose) => [0, [F(pose, 6, { rot: -18, dy: -1 }), F(pose, 6, { rot: -46, dy: -2 }), F(pose, 99, { rot: -80, dy: -4 })]];
+  const taunt = (pose) => [1, [F(pose, 9, { rot: -3, sy: 1.02 }), F(pose, 9, { rot: 3, dy: -1 }), F(pose, 9, { rot: -2 })]];
+  Object.assign(RECIPE.warden, {
+    windup:  [0, [F('stand', 4, { rot: -5, dx: -2 }), F('windup', 4, { rot: -3, dx: -1 }), F('windup', 99)]],
+    punch:   [0, [F('charge', 2, { rot: 6, dx: 2 }), F('punch', 99)]],
+    recover: [0, [F('punch', 5, { rot: 10, dy: 2 }), F('recover', 14), F('recover', 99, { dy: 1 })]],
+    stomp:   [0, [F('windup', 8, { dy: -4, rot: -8 }), F('windup', 6, { dy: -6, rot: -12 }), F('punch', 99, { rot: 32, dy: 6 })]],
+    taunt: taunt('stand'), down: fall3('recover') });
+  Object.assign(RECIPE.shadow, {
+    windup:  [0, [F('stand', 4, { rot: -6, dx: -1 }), F('windup', 99)]],
+    volley:  [0, [F('windup', 2, { rot: 4 }), F('volley', 99)]],
+    leap:    [0, [F('landing', 3, { sy: 0.86, sx: 1.06 }), F('leap', 4, { rot: -6 }), F('leap', 99)]],
+    landing: [0, [F('landing', 4, { sy: 0.86, sx: 1.08 }), F('landing', 99)]],
+    dive:    [0, [F('leap', 4, { rot: 20 }), F('leap', 99, { rot: 38 })]],
+    taunt: taunt('stand'), down: fall3('landing') });
+  Object.assign(RECIPE.raven, {
+    aim:     [0, [F('stand', 4, { rot: -4 }), F('aim', 99)]],
+    fan:     [0, [F('aim', 2, { rot: 4, dx: -2 }), F('fan', 99)]],
+    perch:   [1, [F('leap', 5, { rot: -8 }), F('leap', 5, { rot: 8 })]],
+    aimup:   [0, [F('aim', 4, { rot: -18 }), F('aim', 99, { rot: -38, dy: -2 })]],
+    taunt: taunt('stand'), down: fall3('reload') });
+  Object.assign(RECIPE.emperor, {
+    charge:  [0, [F('stand', 4, { sy: 0.96, rot: -5 }), F('charge', 99)]],
+    spin:    [0, [F('stand', 4, { sx: -1, rot: -15 }), F('spin', 5, { rot: -8 }), F('spin', 99)]],
+    wave:    [0, [F('charge', 4, { rot: -10 }), F('wave', 99)]],
+    pillar:  [1, [F('kneel', 10, { rot: -4 }), F('kneel', 10, { rot: 2, dy: 1 })]],
+    taunt: taunt('stand'), down: fall3('kneel') });
+  Object.assign(RECIPE.breaker, {
+    raise:   [0, [F('stand', 4, { rot: -5 }), F('side', 4, { rot: -10, dy: -2 }), F('raise', 99)]],
+    slam:    [0, [F('raise', 2, { rot: 10 }), F('slam', 99)]],
+    hspin:   [1, [0, 1, 2, 3, 4, 5, 6, 7].map(k => F('slam', 2, { spin: k * 45, dy: -10 }))],
+    taunt: taunt('stand'), down: fall3('recover') });
+})();
+
 const SHEET = {};
 // procedural walk for sheets that only have a standing pose: the legs below the hip
 // swing around it in opposite directions, the body leans and sinks so the planted foot stays on the ground
@@ -3546,7 +3582,7 @@ function simulate(){
     const b = G.boss;
     b.x += (ST.w - 130 - b.x) * 0.05; setAnim(b, 'run'); stepAnim(b);
     for (const q of G.players) { if (q.alive) setAnim(q, 'idle'); stepAnim(q); }
-    if (G.bossIntro === 0) setAnim(b, 'idle', true);
+    if (G.bossIntro === 0) { setAnim(b, 'idle', true); if (SHEET[b.key] && SHEET[b.key].taunt) { b.tauntT = 40; setAnim(b, 'taunt', true); } }
     return;
   }
   for (const q of G.players) playerStep(q);
@@ -3758,6 +3794,7 @@ function postFX(){
 }
 function drawEntities(){
   drawRings();
+  drawBossSpecial();
   drawSmokes();
   for (const u of G.pickups) {
     const x = u.x - G.cam, y = u.y + Math.sin(u.t * 0.12) * 1.5;
@@ -6068,13 +6105,16 @@ bossStep=function(b){
  if(b.state!=='attack'){
   if(b.exposed>0){b.exposed--;b.an='crouch';return;}
   b.cd--;const d=Math.abs(p.x-b.x);if(d>85){b.x+=b.face*1.1;b.an='run';}else b.an='idle';
-  if(b.cd<=0){b.state='attack';b.mf=0;b.hitDone=false;b.attack=['blade','wind','echo'][b.seq++%b.phase];b.an='rage';say(b.attack==='blade'?'הלהבים נטענים — התרחק או חסום':b.attack==='wind'?'גל נמוך מתקרב — קפוץ':'המקור מסומן בחגורה בצבע טורקיז',70);}return;
+  if(b.cd<=0){b.state='attack';b.mf=0;b.hitDone=false;b.attack=(b.phase>=2&&b.seq%4===3)?(b.seq++,'gust'):['blade','wind','echo'][b.seq++%b.phase];b.an='rage';say(b.attack==='gust'?'רוח הכרמל שואבת אותך — רוץ נגדה!':b.attack==='blade'?'הלהבים נטענים — התרחק או חסום':b.attack==='wind'?'גל נמוך מתקרב — קפוץ':'המקור מסומן בחגורה בצבע טורקיז',70);}return;
  }
  b.mf++;const t=b.mf;
  if(b.attack==='blade'){
   if(t>=38&&t<58){b.an='punch2';b.x+=b.face*2.7;if(!b.hitDone){const box=faceBox(b,[6,-62,62,48]);for(const q of livePlayers())if(overlap(box,hurtBox(q))){hurtPlayer(q,b.dmg,b.x,false);b.hitDone=true;}}}
  }else if(b.attack==='wind'){
   if(t===48){b.an='slam';for(const dir of [-1,1])G.shots.push({kind:'wave',x:b.x+dir*18,y:b.y,vx:dir*3.2,dmg:b.dmg*.75,from:'e',life:120});SFX.swing();}
+ }else if(b.attack==='gust'){
+  if(t>=18&&t<64){const dir=Math.sign(b.x-p.x)||1;if(p.alive&&!(p.inv>0))p.x+=dir*(p.state==='block'?0.5:1.15);if(G.tick%2===0)G.parts.push({x:p.x+(Math.random()-.5)*40,y:p.y-20-Math.random()*40,vx:dir*2.2,vy:0,life:16,max:16,col:'rgba(160,240,220,.7)',g:0,sz:1.8});}
+  if(t>=64&&t<74){b.an='punch2';if(!b.hitDone&&Math.abs(p.x-b.x)<70&&Math.abs(p.y-b.y)<62){hurtPlayer(p,b.dmg*0.9,b.x,true);b.hitDone=true;}}
  }else{
   b.haifaClones=t<55;
   if(t===55){b.haifaClones=false;const target=p.x+(b.x<p.x?-70:70);b.x=Math.max(lo,Math.min(hi,target));b.an='punch2';}
@@ -6129,7 +6169,7 @@ const baseHaifaDraw=drawWorld;drawWorld=function(){if(ST.haifa){drawHaifa();retu
 // Original boss silhouette: curved blades, stone shoulder armour and a teal split cloak.
 function drawCarmel(b,alpha=1,offset=0,clone=false){const x=b.x-G.cam+offset,y=b.y;
  const skin=IMG.carmelSkin;
- if(skin){const columns=[0,482,1020,1690,2172],anchors=[230,755,1380,1940];let pose=(!b.alive||b.exposed>0)?3:b.state==='attack'?(b.mf<38?1:b.mf<68?2:3):0;const k=.124;const sy=b.an==='run'?Math.sin(G.tick*.2)*1.4:Math.sin(G.tick*.035)*.35;cx.save();cx.globalAlpha*=alpha;cx.translate(x,y+sy);cx.scale(b.face||1,1);if(clone)cx.filter='grayscale(.8)';else if(b.flashT>0)cx.filter='brightness(1.7)';cx.drawImage(skin,columns[pose],0,columns[pose+1]-columns[pose],724,-(anchors[pose]-columns[pose])*k,-695*k,(columns[pose+1]-columns[pose])*k,724*k);cx.restore();if(b.state==='attack'&&b.mf<38){cx.save();cx.strokeStyle=clone?'#b2c3b440':'#c4f2dfaa';cx.lineWidth=.8;cx.beginPath();cx.arc(x,y-40,35+b.mf*.15,-1,1);cx.stroke();cx.restore();}return;}
+ if(skin){const columns=[0,482,1020,1690,2172],anchors=[230,755,1380,1940];let pose=(!b.alive||b.exposed>0)?3:b.state==='attack'?(b.mf<38?1:b.mf<68?2:3):0;const k=.124;const sy=b.an==='run'?Math.sin(G.tick*.2)*1.4:Math.sin(G.tick*.035)*.35;cx.save();cx.globalAlpha*=alpha;cx.translate(x,y+sy);cx.scale(b.face||1,1);if(b.alive){const ph=b.state==='attack'?(b.mf<38?-0.07*Math.min(1,b.mf/20):b.mf<68?0.09:0.03):(b.exposed>0?0.05*Math.sin(G.tick*.2):0);cx.rotate(ph);}if(clone)cx.filter='grayscale(.8)';else if(b.flashT>0)cx.filter='brightness(1.7)';cx.drawImage(skin,columns[pose],0,columns[pose+1]-columns[pose],724,-(anchors[pose]-columns[pose])*k,-695*k,(columns[pose+1]-columns[pose])*k,724*k);cx.restore();if(b.state==='attack'&&b.mf<38){cx.save();cx.strokeStyle=clone?'#b2c3b440':'#c4f2dfaa';cx.lineWidth=.8;cx.beginPath();cx.arc(x,y-40,35+b.mf*.15,-1,1);cx.stroke();cx.restore();}return;}
 cx.save();cx.globalAlpha*=alpha;cx.translate(x,y);cx.scale(b.face||1,1);const moving=b.an==='run',stride=moving?Math.sin(G.tick*.18)*6:2;const crouch=b.exposed>0?8:0;cx.translate(0,crouch);const attack=b.state==='attack'&&b.mf>=38&&b.mf<68;
  cx.fillStyle=clone?'#34453f':'#264e47';cx.beginPath();cx.moveTo(-10,-65);cx.lineTo(-24,-12);cx.lineTo(-7,-20);cx.lineTo(-3,-3);cx.lineTo(4,-20);cx.lineTo(19,-8);cx.lineTo(12,-65);cx.fill();
  function limb(a,c,width,col){cx.strokeStyle=col;cx.lineWidth=width;cx.lineCap='round';cx.beginPath();cx.moveTo(...a);cx.lineTo(...c);cx.stroke();}
@@ -6158,7 +6198,106 @@ releaseTechnique=function(p,type){baseCarmelRelease(p,type);if(!(p.carmelBuff>0)
 const baseCarmelActor=drawActor;
 drawActor=function(e,alpha){baseCarmelActor(e,alpha);if(e.carmelBuff>0){cx.save();cx.globalAlpha=.35;cx.strokeStyle='#9ae9ce';cx.lineWidth=1.2;cx.beginPath();cx.ellipse(e.x-G.cam,e.y-28,20+Math.sin(G.tick*.12)*3,38,Math.sin(G.tick*.04)*.2,0,7);cx.stroke();cx.restore();}};
 
-window.__yoru = { actionNear: actionNear, doAction: doAction, actionUi: actionUi, HAIFA_ID, HAIFA_ZONES, HAIFA_TASKS, startHaifa, haifaData, haifaFloor, haifaNear, completeHaifaTask, haifaStep, bossStep, damageFoe, killFoe,  safeRespawn, NINJA_POWERS, choosePower, selectedPower, powerStep, stepPowerOrb, clearPowerPath, stormStep, spawnShot, shotsStep, statusStep, drawStorm, ac,  startMotionTrial, MOVES, startMove, playerStep, bodyBox, solidHit, settings:S, G: G, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, get loopClock(){return {last,acc};}, get audio(){return AC;}, get musicBus(){return musBus;}, get canvas(){return cv;}, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, navReach: navReach, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, navMove: navMove, navOk: navOk, cameraStep: cameraStep, powerTier: powerTier, completeCityMission: completeCityMission, cityMissions: CITY_MISSIONS, alertStep: alertStep, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
+
+// ---- boss specials: one new attack each, with a clear warning and an exposed window after ----
+// warden: ground stomp (jump the two shockwaves) · shadow: aerial dive at a marked spot · raven: arrow rain on marked
+// spots · emperor: shadow pillars under the player · breaker: spinning hammer that leaves him dizzy · carmel: wind pull (in its module)
+const BOSS_SPECIAL = { warden: 'stomp', shadow: 'dive', raven: 'rain', emperor: 'pillar', breaker: 'hspin' };
+const SPECIAL_SAY = { stomp: 'הסוהר רוקע — קפוץ מעל הגלים!', dive: 'אדון הצללים זינק — זוז מהסימון!', rain: 'מלך העורבים יורה לשמיים — צא מהסימונים!',
+  pillar: 'הקיסר מזמן עמודי צל — אל תעמוד על הסימון!', hspin: 'שובר הקרקע מסתובב עם הפטיש — התרחק!' };
+const baseSpecialBoss = bossStep;
+bossStep = function(b){
+  if (b && !b.alive && b.sp) { b.sp = null; b.exposed = false; }
+  if (!b || b.haifaBoss || !b.alive || !BOSS_SPECIAL[b.key]) return baseSpecialBoss(b);
+  if (b.tauntT > 0) { b.tauntT--; stepAnim(b); setAnim(b, 'taunt'); return; }
+  if (b.sp) { const p = pickTarget(b); if (b.flashT > 0) b.flashT--; stepAnim(b); bossSpecialStep(b, p); return; }
+  if (b.state !== 'attack' && b.cd <= 1 && !b.exposed && G.bossIntro === 0 && Math.random() < (b.hp < b.hpMax * 0.6 ? 0.45 : 0.3)) {
+    const kind = BOSS_SPECIAL[b.key]; b.sp = { kind: kind, t: 0, marks: [] }; b.state = 'attack'; b.attack = 'special'; b.mf = 0; b.hitDone = false;
+    say(SPECIAL_SAY[kind], 70); stepAnim(b); return;
+  }
+  return baseSpecialBoss(b);
+};
+function bossSpecialEnd(b, exposedFor){
+  b.sp.recover = exposedFor; b.sp.recT = 0; b.exposed = true; pop(b.x, b.y - 90, 'חשוף!', '#ffe27a');
+}
+function bossSpecialStep(b, p){
+  const S2 = b.sp, k = DIFF[G.diff].tellK; S2.t++;
+  if (S2.recover) {                                        // the opening after the move
+    if (++S2.recT >= S2.recover) { b.exposed = false; b.sp = null; endBossAttack(b); }
+    return;
+  }
+  const lo = G.cam + 24, hi = G.cam + VW - 24, hitP = (box, dmg, heavy) => { for (const q of livePlayers()) if (overlap(box, hurtBox(q))) hurtPlayer(q, dmg, b.x, heavy); };
+  if (S2.kind === 'stomp') {
+    if (S2.t === 1) setAnim(b, 'stomp', true);
+    const T = Math.round(30 * k);
+    if (S2.t === T) {
+      SFX.heavy(); trauma(0.7); burst(b.x, b.gy, 18, '#c8b8a0', 3, 0.8);
+      for (const dir of [1, -1]) G.shots.push({ kind: 'wave', x: b.x + dir * 30, y: b.gy, vx: dir * 3.4, dmg: b.dmg * 0.7, from: 'e', life: 110 });
+      if (b.phase === 2 || b.hp < b.hpMax * 0.5) S2.second = T + 22;
+      hitP({ x: b.x - 34, y: b.y - 30, w: 68, h: 30 }, b.dmg * 0.8, true);
+    }
+    if (S2.second && S2.t === S2.second) { SFX.heavy(); trauma(0.5); for (const dir of [1, -1]) G.shots.push({ kind: 'wave', x: b.x + dir * 30, y: b.gy, vx: dir * 4.2, dmg: b.dmg * 0.6, from: 'e', life: 100 }); }
+    if (S2.t > (S2.second || T) + 12) { setAnim(b, 'recover', true); bossSpecialEnd(b, Math.round(60 / k)); }
+  } else if (S2.kind === 'dive') {
+    if (S2.t === 1) { setAnim(b, 'leap', true); b.vy = -8.6; b.vx = 0; b.y -= 1; SFX.jumpBoss && SFX.jumpBoss(); }
+    if (!S2.diving) {
+      if (b.vy < 0) { b.vy += GRAV * 0.8; b.y += b.vy; }
+      else if (!S2.tx) { S2.tx = Math.max(lo, Math.min(hi, p.x)); S2.marks = [{ x: S2.tx, t: 0, max: Math.round(26 * k) }]; setAnim(b, 'dive', true); }
+      else if (++S2.marks[0].t >= S2.marks[0].max) { S2.diving = true; const fr = 12; b.vx = (S2.tx - b.x) / fr; b.vy = (b.gy - b.y) / fr; }
+    } else {
+      b.x += b.vx; b.y += b.vy;
+      if (b.y >= b.gy) {
+        b.y = b.gy; b.vx = 0; b.vy = 0; S2.marks = []; SFX.heavy(); trauma(0.6); burst(b.x, b.gy, 14, '#ffd27a', 2.6, 0.6);
+        hitP({ x: b.x - 30, y: b.y - 70, w: 60, h: 70 }, b.dmg, true);
+        for (const dir of [1, -1]) G.shots.push({ kind: 'wave', x: b.x + dir * 24, y: b.gy, vx: dir * 3, dmg: b.dmg * 0.5, from: 'e', life: 60 });
+        setAnim(b, 'landing', true); bossSpecialEnd(b, Math.round(55 / k));
+      }
+    }
+  } else if (S2.kind === 'rain') {
+    if (S2.t === 1) { setAnim(b, 'aimup', true); SFX.draw && SFX.draw(); }
+    const T = Math.round(28 * k);
+    if (S2.t === T) { SFX.bow(); const n = b.hp < b.hpMax * 0.5 ? 5 : 4; for (let i = 0; i < n; i++) S2.marks.push({ x: Math.max(lo, Math.min(hi, p.x + (i - (n - 1) / 2) * 46 + (Math.random() - 0.5) * 14)), y: p.gy, t: 0, max: Math.round(40 * k) }); }
+    for (const m of S2.marks) if (m.t < m.max && ++m.t === m.max) G.shots.push({ kind: 'arrow', x: m.x, y: (m.y || b.gy) - 250, vx: 0.001, vy: 7.5, dmg: b.dmg * 0.55, from: 'e', life: 80 });
+    if (S2.t > T + Math.round(40 * k) + 30) { S2.marks = []; setAnim(b, 'reload', true); bossSpecialEnd(b, Math.round(70 / k)); }
+  } else if (S2.kind === 'pillar') {
+    if (S2.t === 1) setAnim(b, 'pillar', true);
+    const every = Math.round(26 * k), n = b.hp < b.hpMax * 0.5 ? 4 : 3;
+    if (S2.t % every === 0 && S2.marks.length < n) { S2.marks.push({ x: Math.max(lo, Math.min(hi, p.x)), y: p.gy, t: 0, max: Math.round(24 * k), pillar: 1 }); SFX.hiss && SFX.hiss(); }
+    for (const m of S2.marks) {
+      if (m.t < m.max + 18) m.t++;
+      if (m.t === m.max) { trauma(0.3); for (const q of livePlayers()) if (Math.abs(q.x - m.x) < 18 && q.y >= q.gy - 30) hurtPlayer(q, b.dmg * 0.8, m.x, true); }
+    }
+    if (S2.marks.length >= n && S2.marks.every(m => m.t >= m.max + 18)) { S2.marks = []; setAnim(b, 'kneel', true); bossSpecialEnd(b, Math.round(65 / k)); }
+  } else if (S2.kind === 'hspin') {
+    const T = Math.round(24 * k);
+    if (S2.t === 1) setAnim(b, 'raise', true);
+    if (S2.t === T) { setAnim(b, 'hspin', true); SFX.swing(); }
+    if (S2.t > T && S2.t < T + 80) {
+      if ((S2.t - T) % 20 === 1) b.face = p.x >= b.x ? 1 : -1;
+      b.x = Math.max(lo, Math.min(hi, b.x + b.face * 2.1));
+      if ((S2.t - T) % 12 === 0) { SFX.swing(); hitP({ x: b.x - 42, y: b.y - 60, w: 84, h: 56 }, b.dmg * 0.55, false); }
+      if (G.tick % 3 === 0) G.parts.push({ x: b.x + (Math.random() - 0.5) * 60, y: b.gy - 4, vx: 0, vy: -0.4, life: 14, max: 14, col: 'rgba(200,180,140,.7)', g: 0, sz: 2 });
+    }
+    if (S2.t >= T + 80) { setAnim(b, 'recover', true); pop(b.x, b.y - 100, 'מסוחרר!', '#ffe27a'); bossSpecialEnd(b, Math.round(75 / k)); }
+  }
+}
+function drawBossSpecial(){
+  const b = G.boss; if (!b || !b.sp || !b.sp.marks) return;
+  for (const m of b.sp.marks) {
+    const x = m.x - G.cam, y = m.y || b.gy, k = Math.min(1, m.t / m.max);
+    if (m.pillar && m.t >= m.max) {                        // a column of shadow bursting from the ground
+      const h = 110 * Math.min(1, (m.t - m.max) / 5) * (1 - Math.max(0, (m.t - m.max - 10) / 8));
+      cx.save(); cx.globalCompositeOperation = 'lighter'; const g = cx.createLinearGradient(0, y - h, 0, y); g.addColorStop(0, 'rgba(150,70,220,0)'); g.addColorStop(1, 'rgba(170,90,255,.85)');
+      cx.fillStyle = g; cx.fillRect(x - 12, y - h, 24, h); cx.restore(); continue;
+    }
+    if (m.t >= m.max) continue;
+    cx.save(); cx.strokeStyle = 'rgba(255,80,60,' + (0.35 + 0.5 * k).toFixed(2) + ')'; cx.lineWidth = 1.6;
+    cx.beginPath(); cx.ellipse(x, y - 1, 16 - 6 * k, 4, 0, 0, 7); cx.stroke();
+    cx.fillStyle = 'rgba(255,80,60,' + (0.12 + 0.25 * k).toFixed(2) + ')'; cx.beginPath(); cx.ellipse(x, y - 1, (16 - 6 * k) * k, 4 * k, 0, 0, 7); cx.fill();
+    cx.restore();
+  }
+}
+window.__yoru = { bossSpecialStep: bossSpecialStep,  actionNear: actionNear, doAction: doAction, actionUi: actionUi, HAIFA_ID, HAIFA_ZONES, HAIFA_TASKS, startHaifa, haifaData, haifaFloor, haifaNear, completeHaifaTask, haifaStep, bossStep, damageFoe, killFoe,  safeRespawn, NINJA_POWERS, choosePower, selectedPower, powerStep, stepPowerOrb, clearPowerPath, stormStep, spawnShot, shotsStep, statusStep, drawStorm, ac,  startMotionTrial, MOVES, startMove, playerStep, bodyBox, solidHit, settings:S, G: G, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, get loopClock(){return {last,acc};}, get audio(){return AC;}, get musicBus(){return musBus;}, get canvas(){return cv;}, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, navReach: navReach, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, navMove: navMove, navOk: navOk, cameraStep: cameraStep, powerTier: powerTier, completeCityMission: completeCityMission, cityMissions: CITY_MISSIONS, alertStep: alertStep, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
 loadSprites().then(() => { try { if (window.THREE && S.r3) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
 })();
 </script>
