@@ -1052,8 +1052,8 @@ function ac(){
     const comp = AC.createDynamicsCompressor();             // keeps several hits at once from clipping
     comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 6; comp.attack.value = 0.003; comp.release.value = 0.18;
     comp.connect(AC.destination);
-    master = AC.createGain(); master.gain.value = S.muted ? 0 : S.vol; master.connect(comp);
-    musBus = AC.createGain(); musBus.gain.value = S.muted ? 0 : S.mus; musBus.connect(AC.destination);
+    master = AC.createGain(); master.gain.value = S.muted || S.sfxOff ? 0 : S.vol; master.connect(comp);
+    musBus = AC.createGain(); musBus.gain.value = S.muted || S.musOff ? 0 : S.mus * 0.55; musBus.connect(AC.destination);
     loadSounds();
   } catch (e) { AC = null; }
   return AC;
@@ -1092,6 +1092,17 @@ function nz(dur, vol, cut, when, q){
   g.gain.exponentialRampToValueAtTime(0.0005, t + dur);
   s.connect(f); f.connect(g); g.connect(DEST || master);
   s.start(t); s.stop(t + dur + 0.03);
+}
+function strikeSound(move, contact, heavy = false) {
+  const kick = /kick|sweep|dragon|hurricane/.test(move);
+  if (!contact) {
+    nz(kick ? 0.15 : 0.082, kick ? 0.27 : 0.22, kick ? 3000 : 5200);
+    return;
+  }
+  const frequency = kick ? 185 : heavy ? 220 : 300;
+  const length = kick || heavy ? 0.14 : 0.095;
+  nz(length, kick || heavy ? 0.39 : 0.31, kick ? 1700 : 3100);
+  tone(frequency, length, 'triangle', heavy || kick ? 0.36 : 0.29, kick ? 80 : 125, null, 0.002);
 }
 const SFX = {
   count: n => { if (AUD.countdown) return; tone(n <= 3 ? 1046 : 784, 0.12, 'triangle', n <= 3 ? 0.22 : 0.14, null, null, 0.004); if (n <= 3) tone(523, 0.18, 'sine', 0.12); },
@@ -1320,9 +1331,7 @@ function jackTickEmbedded(){
   return true;
 }
 function musicTick(){
-  const hasFile = jackTick();
-  if (!AC || !MUS.on || S.mus <= 0) return;
-  if (hasFile && (!MUS.boss || (MUS.cur && MUS.cur.type === 'file'))) return;   // a real track is playing; the synth is only a last fallback
+  if (!AC || !MUS.on || S.muted || S.musOff || S.mus <= 0) return;
   musFx(); musBuses();
   // intensity: exploring (0) / fighting (1); the drum layer glides between them
   const fighting = G.scene === 'play' && (G.boss || G.foes.some(f => f.alive && Math.abs(f.x - G.cam - VW / 2) < VW * 0.7));
@@ -2035,7 +2044,7 @@ function startMove(p, name){
   p.moveSerial = (p.moveSerial || 0) + 1;
   p.state = 'attack'; p.move = name; p.mf = 0; p.hitList = []; p.nextCombo = null;
   setAnim(p, MOVES[name].anim, true);
-  if (!MOVES[name].shoot) SFX.swing();
+  if (!MOVES[name].shoot) strikeSound(name, false);
   const lbl = MOVES[name].label;
   if (lbl) { pop(p.x, p.y - 70, lbl, p.key === 'red' ? '#ff9ab8' : '#9fd4ff'); SFX.jump(); }
   if (name === 'dragon') { p.vy = 0; p.vx = 0; burst(p.x, p.gy, 8, '#ffd27a', 2, 0.6); }
@@ -2213,7 +2222,7 @@ function playerLogic(p){
           p.hitList.push(f);
           const wasAlive = f.alive, pk = p.pwT > 0;
           const mm = pk ? Object.assign({}, m, { kb: m.kb * PW.kb }) : m;
-          damageFoe(f, m.dmg * c.dmg * (pk ? PW.dmg : 1), p.face, mm, hb.x + (p.face > 0 ? hb.w : 0), hb.y + hb.h / 2, p, p.face);
+          damageFoe(f, m.dmg * c.dmg * (pk ? PW.dmg : 1), p.face, mm, hb.x + (p.face > 0 ? hb.w : 0), hb.y + hb.h / 2, p, p.face, p.move);
           gainEnergy(p, 7);
           if (wasAlive && !f.blockedLast) { gainPower(p, PW.gainHit + (p.lastMove && p.lastMove !== p.move ? PW.gainVaried : 0)); comboHit(p, p.move); }
           p.lastMove = p.move;
@@ -2367,7 +2376,7 @@ function playerStep(p){
 // ===================================================================
 // 11. damage
 // ===================================================================
-function damageFoe(f, dmg, dir, m, hx, hy, attacker, fromDir){
+function damageFoe(f, dmg, dir, m, hx, hy, attacker, fromDir, strikeMove){
   f.blockedLast = false;
   if (f.emerge) { f.blockedLast = true; return; }                 // still stepping out of hiding
   if (f.kind === 'echodup') { smokePuff(f); f.alive = false; f.deadT = 0; f.hp = 0; pop(f.x, f.y - 50, 'כפיל!', '#c8a0ff'); SFX.shield(); return; }
@@ -2412,8 +2421,11 @@ function damageFoe(f, dmg, dir, m, hx, hy, attacker, fromDir){
   f.flashT = 5;
   G.score += Math.round(dmg * 10);
   impact(hx, hy, m.heavy);
-  if (m.heavy) { SFX.hitHeavy(); freeze(6); trauma(0.38); }
-  else { SFX.hit(); freeze(3); trauma(0.18); }
+  if (strikeMove) strikeSound(strikeMove, true, m.heavy);
+  else if (m.heavy) SFX.hitHeavy();
+  else SFX.hit();
+  if (m.heavy) { freeze(6); trauma(0.38); }
+  else { freeze(3); trauma(0.18); }
   if (f.kind === 'boss') {                      // super armour: no stagger, small push
     f.x += dir * 0.8;
     if (f.hp <= 0) killFoe(f, dir);
@@ -5593,7 +5605,7 @@ function applyQuality(){
 }
 function applyMute(){
   if (master) master.gain.value = S.muted || S.sfxOff ? 0 : S.vol;
-  if (musBus) musBus.gain.value = S.muted || S.musOff ? 0 : S.mus;
+  if (musBus) musBus.gain.value = S.muted || S.musOff ? 0 : S.mus * 0.55;
   elMute.textContent = S.muted ? '🔇 מושתק' : '🔊 השתק';
   const sb = document.getElementById('btnSnd'); if (sb) sb.firstElementChild.textContent = S.muted ? '🔇' : '🔊';
   const pm = document.getElementById('pmMusic'), ps = document.getElementById('pmSfx');
