@@ -1092,6 +1092,17 @@ function nz(dur, vol, cut, when, q){
   s.connect(f); f.connect(g); g.connect(DEST || master);
   s.start(t); s.stop(t + dur + 0.03);
 }
+const isKick = move => /kick|sweep|dragon|hurricane/.test(move);
+function strikeSwing(move){
+  const kick=isKick(move);
+  nz(kick?.15:.085,kick?.21:.16,kick?2900:5200);
+}
+function strikeContact(move, heavy){
+  if(!move){if(heavy)SFX.hitHeavy();else SFX.hit();return;}
+  const kick=isKick(move), length=kick||heavy?.14:.09;
+  nz(length,kick||heavy?.34:.27,kick?1600:3000);
+  tone(kick?178:heavy?214:300,length,'triangle',kick||heavy?.31:.24,kick?82:120,null,.002);
+}
 const SFX = {
   count: n => { if (AUD.countdown) return; tone(n <= 3 ? 1046 : 784, 0.12, 'triangle', n <= 3 ? 0.22 : 0.14, null, null, 0.004); if (n <= 3) tone(523, 0.18, 'sine', 0.12); },
   fire:  () => { nz(0.35, 0.16, 2400); tone(160, 0.25, 'sawtooth', 0.05, 90); },
@@ -1608,7 +1619,7 @@ function setObj(text, done){
 function addCoins(n, x, y){ SY().coins += n; if (x !== undefined) pop(x, y, '+' + n + ' 🪙', '#ffd24a'); }
 function gainEnergy(p, n){ p.en = Math.min(enMax(), (p.en || 0) + n); }
 // ---- action tuning: power mode and the new moves (one place to balance) ----
-const PW = { dur: 600, dmg: 1.5, kb: 1.3, rec: 0.85, scale: 1.22, spread: 9, gainHit: 5, gainVaried: 3, gainShot: 3, gainPerfect: 12, gainDodge: 8, specialK: 1.25 };
+const PW = { dur: 600, dmg: 1.5, kb: 1.3, rec: 0.85, scale: 1.22, spread: 9, gainHit: 5, gainVaried: 6, gainShot: 3, gainPerfect: 15, gainDodge: 11, specialK: 1.25 };
 const MOVES = {
   punch1: { anim: 'punch1', startup: 4, active: 3, rec: 7,  dmg: 6,  kb: 1.6, stun: 15, box: [10, -48, 25, 14], link: 'punch2' },
   punch2: { anim: 'punch2', startup: 5, active: 3, rec: 8,  dmg: 7,  kb: 1.8, stun: 16, box: [10, -48, 27, 14], link: 'punch3', linkFwd: 'grab' },
@@ -2032,7 +2043,7 @@ function startMove(p, name){
   p.moveSerial = (p.moveSerial || 0) + 1;
   p.state = 'attack'; p.move = name; p.mf = 0; p.hitList = []; p.nextCombo = null;
   setAnim(p, MOVES[name].anim, true);
-  if (!MOVES[name].shoot) SFX.swing();
+  if (!MOVES[name].shoot) strikeSwing(name);
   const lbl = MOVES[name].label;
   if (lbl) { pop(p.x, p.y - 70, lbl, p.key === 'red' ? '#ff9ab8' : '#9fd4ff'); SFX.jump(); }
   if (name === 'dragon') { p.vy = 0; p.vx = 0; burst(p.x, p.gy, 8, '#ffd27a', 2, 0.6); }
@@ -2051,6 +2062,10 @@ const RANK_TXT = { C: 'COOL!', B: 'BRAVO!', A: 'AWESOME!', S: 'STYLISH!!' }, RAN
 function comboHit(p, mv){
   const c = G.cmb || (G.cmb = { n: 0, t: 0, moves: {}, rank: null });
   c.n++; c.t = 140; c.moves[mv] = 1; c.pop = 8;
+  if(Object.keys(c.moves).length >= 3 && !c.varietyReward){
+    c.varietyReward=true; gainPower(p,8);
+    pop(p.x,p.y-72,'קומבו מגוון · כוח נוסף','#9fe8ff');
+  }
   const style = c.n + 5 * (Object.keys(c.moves).length - 1);   // different moves count more than repeating one
   const r = style >= 55 ? 'S' : style >= 36 ? 'A' : style >= 22 ? 'B' : style >= 10 ? 'C' : 'D';
   if (r !== c.rank) { if (RANKS.indexOf(r) > RANKS.indexOf(c.rank || 'D')) { big(RANK_TXT[r], 55); SFX.unlock(); if (r === 'S') flash(0.15); } c.rank = r; }
@@ -2210,7 +2225,7 @@ function playerLogic(p){
           p.hitList.push(f);
           const wasAlive = f.alive, pk = p.pwT > 0;
           const mm = pk ? Object.assign({}, m, { kb: m.kb * PW.kb }) : m;
-          damageFoe(f, m.dmg * c.dmg * (pk ? PW.dmg : 1), p.face, mm, hb.x + (p.face > 0 ? hb.w : 0), hb.y + hb.h / 2, p, p.face);
+          damageFoe(f, m.dmg * c.dmg * (pk ? PW.dmg : 1), p.face, mm, hb.x + (p.face > 0 ? hb.w : 0), hb.y + hb.h / 2, p, p.face, p.move);
           gainEnergy(p, 7);
           if (wasAlive && !f.blockedLast) { gainPower(p, PW.gainHit + (p.lastMove && p.lastMove !== p.move ? PW.gainVaried : 0)); comboHit(p, p.move); }
           p.lastMove = p.move;
@@ -2364,7 +2379,7 @@ function playerStep(p){
 // ===================================================================
 // 11. damage
 // ===================================================================
-function damageFoe(f, dmg, dir, m, hx, hy, attacker, fromDir){
+function damageFoe(f, dmg, dir, m, hx, hy, attacker, fromDir, strikeMove){
   f.blockedLast = false;
   if(f.key==='beastie' && m.proj && !f.exposed) dmg*=.38;
   if (f.emerge) { f.blockedLast = true; return; }                 // still stepping out of hiding
@@ -2410,8 +2425,9 @@ function damageFoe(f, dmg, dir, m, hx, hy, attacker, fromDir){
   f.flashT = 5;
   G.score += Math.round(dmg * 10);
   impact(hx, hy, m.heavy);
-  if (m.heavy) { SFX.hitHeavy(); freeze(6); trauma(0.38); }
-  else { SFX.hit(); freeze(3); trauma(0.18); }
+  strikeContact(strikeMove,m.heavy);
+  if (m.heavy) { freeze(6); trauma(0.38); }
+  else { freeze(3); trauma(0.18); }
   if (f.kind === 'boss') {                      // super armour: no stagger, small push
     f.x += dir * 0.8;
     if (f.hp <= 0) killFoe(f, dir);
@@ -4469,6 +4485,7 @@ function buildCity(){                         // the Old City (harbour to hillto
       { t: 'viper', x: 5160, y: 40 }, { t: 'archer', x: 4460, y: -60 }, { t: 'thrower', x: 5240, y: -60 }],
     hides: [                                                     // where the ambushers wait, drawn as part of the street
       { id: 'a1', type: 'arch', x: 880 }, { id: 'a2', type: 'arch', x: 990 },
+      { id:'whWest', type:'alley', x:1900 }, { id:'whHigh', type:'perch', x:2118,y:146 },
       { id: 'd0', type: 'door', x: 1660, deco: 1 }, { id: 'd1', type: 'door', x: 2200 }, { id: 'd2', type: 'door', x: 2520, deco: 1 },
       { id: 's1', type: 'stall', x: 3130 }, { id:'mWest', type:'alley', x:2860 }, { id:'mHigh', type:'perch', x:3100, y:178 }, { id:'mRoof', type:'roofdrop', x:3290, y:F, top:110 }, { id: 'al', type: 'alley', x: 3300 }, { id: 's2', type: 'stall', x: 3455, deco: 1 },
       { id: 'bal', type: 'balcony', x: 4690, y: 136, top: 60 }, { id: 'wl', type: 'wall', x: 4560, y: 136 },
@@ -4477,7 +4494,7 @@ function buildCity(){                         // the Old City (harbour to hillto
     ],
     ambushes: [
       { id: 'dock', x: 760, hint: 'צללים זזים בתוך הקשתות…', sets: [[['grunt', 'a1'], ['agile', 'a2']], [['grunt', 'a2'], ['grunt', 'a1'], ['thrower', 'a2']]] },
-      { id: 'door', x: 2040, hint: 'דלת המחסן רועדת!', sets: [[['grunt', 'd1'], ['viper', 'd1'], ['grunt', 'd1']], [['agile', 'd1'], ['grunt', 'd1']]] },
+      { id:'door',x:2040,hint:'מארב במחסנים · הדלת והגג בתנועה!',chain:1,rapid:1,sets:[[['grunt','whWest'],['agile','d1'],['archer','whHigh']],[['shield','d1'],['grunt','whWest'],['thrower','whHigh'],['viper','d1']]] },
       { id: 'market', x: 3010, hint: 'מארב בשוק · תוקפים משני הצדדים ומעליך!', chain: 1, rapid: 1, sets: [[['grunt','mWest'],['agile','s1'],['archer','mHigh'],['grunt','mRoof']], [['shield','mWest'],['agile','al'],['archer','mHigh'],['grunt','mRoof'],['viper','s1']]] },
       { id: 'hill', x: 4520, y: 136, hint: 'צל נופל על משטח המדרגות!', sets: [[['agile', 'bal'], ['grunt', 'wl'], ['grunt', 'bal']], [['grunt', 'bal'], ['viper', 'wl']]] },
       { id: 'roofs', x: 4700, y: -60, hint: 'אבק נושר מהגג שמעליך…', sets: [[['agile', 'rd'], ['grunt', 'rl']], [['grunt', 'rd'], ['agile', 'rl'], ['thrower', 'rl']]] },
@@ -4903,7 +4920,7 @@ function cityStep(){
   }
   if (A.state === 'fight' && !A.foes.some(o => o.alive) && A.a.chain && A.wave + 1 < A.a.sets.length) {   // the next group comes in
     A.wave++; A.set = A.a.sets[A.wave]; A.hides = A.set.map(e => e[1]); A.state = 'tell'; A.t = 0; A.i = 0; A.foes = [];
-    say(A.a.rapid?'מארב בשוק · גל '+(A.wave+1)+' מתוך '+A.a.sets.length:'עוד מגיעים!', 60); return;
+    say(A.a.rapid?'גל '+(A.wave+1)+' מתוך '+A.a.sets.length:'עוד מגיעים!', 60); return;
   }
   if (A.state === 'fight' && !A.foes.some(o => o.alive)) {
     A.a.done = true; cd.a.push(A.a.id); G.camMin = A.camMin; G.amb = null; cityObj();
@@ -5754,10 +5771,10 @@ activatePower=function(p){
 const basePlayerLogic=playerLogic;
 playerLogic=function(p){basePlayerLogic(p);if(p.pwT>0)p.pw=100*p.pwT/(p.powerDuration||PW.dur);};
 const baseDamage=damageFoe;
-damageFoe=function(f,dmg,dir,m,hx,hy,attacker,fromDir){
+damageFoe=function(f,dmg,dir,m,hx,hy,attacker,fromDir,strikeMove){
   if(f&&f.alive){f.alert=100;f.alertMemory=480;}
   if(attacker&&attacker.kind==='player'&&attacker.pwT>0)dmg*=1+.1*(attacker.powerTier||0);
-  return baseDamage(f,dmg,dir,m,hx,hy,attacker,fromDir);
+  return baseDamage(f,dmg,dir,m,hx,hy,attacker,fromDir,strikeMove);
 };
 
 // City missions: explicit interactions, persistent outcomes, one-time rewards.
@@ -6223,7 +6240,7 @@ activatePower=function(p){const was=p.castT>0||p.pwT>0;const out=baseHaifaPower(
 const baseHaifaPlayer=playerStep;
 playerStep=function(p){if(p.carmelBuff>0)p.carmelBuff--;baseHaifaPlayer(p);};
 const baseHaifaDamage=damageFoe;
-damageFoe=function(f,dmg,dir,m,hx,hy,p,fromDir){if(p?.carmelBuff>0)dmg*=1.15;return baseHaifaDamage(f,dmg,dir,m,hx,hy,p,fromDir);};
+damageFoe=function(f,dmg,dir,m,hx,hy,p,fromDir,strikeMove){if(p?.carmelBuff>0)dmg*=1.15;return baseHaifaDamage(f,dmg,dir,m,hx,hy,p,fromDir,strikeMove);};
 // Deterministic, resolution-independent scenery, aligned to collision surfaces.
 function haifaCypress(x,y,h=80){const g=cx.createLinearGradient(x-10,y-h,x+10,y);g.addColorStop(0,'#406653');g.addColorStop(.5,'#153a32');g.addColorStop(1,'#1c312b');cx.fillStyle='#69533b';cx.fillRect(x-1.5,y-15,3,18);cx.fillStyle=g;cx.beginPath();cx.moveTo(x,y-h);cx.bezierCurveTo(x-16,y-h*.45,x-14,y-5,x,y);cx.bezierCurveTo(x+15,y-6,x+13,y-h*.45,x,y-h);cx.fill();}
 function haifaRail(x,y,w){cx.fillStyle='#c9b99b';cx.fillRect(x,y-24,w,3);cx.fillStyle='#f4e8cc';cx.fillRect(x,y-26,w,3);cx.fillRect(x,y-3,w,4);for(let k=4;k<w;k+=13){cx.fillStyle='#d9cbac';cx.fillRect(x+k,y-23,3,21);cx.fillStyle='#fff0d0';cx.fillRect(x+k,y-21,1,18);}}
