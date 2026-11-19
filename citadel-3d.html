@@ -1,15 +1,53 @@
 <!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>מצודת דוד בתלת ממד</title><style>body{margin:0;background:#bed1dc;font:16px Arial}canvas{display:block;touch-action:none}aside{position:fixed;top:15px;right:15px;background:#152127dd;color:#fff;padding:14px;border-radius:8px;max-width:270px}button{padding:8px;margin:4px}</style><aside>מצודת דוד · מודל מבלנדר<br><small>גרירה לסיבוב · גלגלת להתקרבות<br>במגע השתמשו בכפתורי ההתקרבות</small><br><button id="near">התקרבות</button><button id="far">התרחקות</button><button id="gate">השער</button><button id="court">החצר</button><p id="status">טוען מודל…</p></aside><script src="vendor/three.min.js"></script><script>
 (async()=>{
-const scene=new THREE.Scene();scene.background=new THREE.Color('#bed1dc');
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#c9d7db');scene.fog=new THREE.FogExp2('#c9d7db',.007);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));document.body.append(renderer.domElement);renderer.outputEncoding=THREE.sRGBEncoding;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.95;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const camera=new THREE.PerspectiveCamera(50,1,.1,300);
-scene.add(new THREE.HemisphereLight(0xffffff,0x62513d,1.4));const sun=new THREE.DirectionalLight(0xffefcf,1.7);sun.position.set(-15,35,18);scene.add(sun);
-const text=await fetch('citadel-geometry.txt').then(r=>{if(!r.ok)throw Error('model');return r.text()});
+scene.add(new THREE.HemisphereLight(0xd9e8f5,0x776b51,.65));const sun=new THREE.DirectionalLight(0xffedcf,2.1);sun.position.set(-23,31,18);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-38,right:38,top:34,bottom:-34,near:1,far:100});sun.shadow.bias=-.00015;sun.shadow.normalBias=.035;scene.add(sun);
+const text=await fetch('citadel-realistic-mesh.txt').then(r=>{if(!r.ok)throw Error('model');return r.text()});
 const bytes=Uint8Array.from(atob(text.trim()),c=>c.charCodeAt(0));
 const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-const data=JSON.parse(await new Response(stream).text());
-for(const [color,positions] of data){const geom=new THREE.BufferGeometry();const p=new Float32Array(positions.length);for(let i=0;i<p.length;i+=3){p[i]=positions[i];p[i+1]=positions[i+2];p[i+2]=-positions[i+1];}geom.setAttribute('position',new THREE.BufferAttribute(p,3));geom.computeVertexNormals();scene.add(new THREE.Mesh(geom,new THREE.MeshStandardMaterial({color:new THREE.Color(...color),roughness:.94,side:THREE.DoubleSide})));}
-let yaw=.55,pitch=.55,distance=64,target=new THREE.Vector3(0,3,0),drag=null;
+
+const raw=new DataView(await new Response(stream).arrayBuffer());let offset=0;
+const count=raw.getUint32(offset,true);offset+=4;
+function weatheredMaterial(color,index){
+ const material=new THREE.MeshStandardMaterial({color:new THREE.Color(...color),roughness:.91,metalness:index===9?.45:0,side:THREE.DoubleSide});
+ if(index>5)return material;
+ material.onBeforeCompile=shader=>{
+ shader.vertexShader='varying vec3 vStoneWorld;\n'+shader.vertexShader;
+ shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvStoneWorld=(modelMatrix*vec4(transformed,1.0)).xyz;');
+ shader.fragmentShader=`varying vec3 vStoneWorld;
+ float hashStone(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+ float noiseStone(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+ return mix(mix(mix(hashStone(i),hashStone(i+vec3(1,0,0)),f.x),mix(hashStone(i+vec3(0,1,0)),hashStone(i+vec3(1,1,0)),f.x),f.y),
+ mix(mix(hashStone(i+vec3(0,0,1)),hashStone(i+vec3(1,0,1)),f.x),mix(hashStone(i+vec3(0,1,1)),hashStone(i+vec3(1,1,1)),f.x),f.y),f.z);}
+ `+shader.fragmentShader;
+ shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+ float broad=noiseStone(vStoneWorld*2.);
+ float grain=noiseStone(vStoneWorld*48.);
+ float pits=smoothstep(.68,.9,noiseStone(vStoneWorld*95.));
+ float stain=(1.-smoothstep(.4,2.,vStoneWorld.y))*(.22+.2*noiseStone(vStoneWorld*3.));
+ diffuseColor.rgb*=.78+.34*broad+.12*grain-.24*pits-stain;
+ `);
+ shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+ float grit=noiseStone(vStoneWorld*48.)*.6+noiseStone(vStoneWorld*90.)*.4;
+ normal=normalize(normal+vec3(dFdx(grit),dFdy(grit),0.)*.75);
+ `);
+ };
+ return material;
+}
+let triangles=0;
+for(let g=0;g<count;g++){
+ const color=[raw.getFloat32(offset,true),raw.getFloat32(offset+4,true),raw.getFloat32(offset+8,true)];offset+=12;
+ const unique=raw.getUint32(offset,true),n=raw.getUint32(offset+4,true);offset+=8;
+ const start=offset;offset+=unique*6;const p=new Float32Array(n*3);
+ for(let i=0;i<n;i++){const vi=raw.getUint32(offset,true)*6+start;offset+=4;p[i*3]=raw.getInt16(vi,true)/500;p[i*3+1]=raw.getInt16(vi+4,true)/500;p[i*3+2]=-raw.getInt16(vi+2,true)/500;}
+ if(!n)continue;
+ const geom=new THREE.BufferGeometry();geom.setAttribute('position',new THREE.BufferAttribute(p,3));geom.computeVertexNormals();
+ const mesh=new THREE.Mesh(geom,weatheredMaterial(color,g));mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);triangles+=n/3;
+}
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(160,160),weatheredMaterial([.32,.29,.22],5));ground.rotation.x=-Math.PI/2;ground.position.y=-.26;ground.receiveShadow=true;scene.add(ground);
+let yaw=.3,pitch=.18,distance=27,target=new THREE.Vector3(0,3,8),drag=null;
 renderer.domElement.onpointerdown=e=>{drag=[e.clientX,e.clientY];renderer.domElement.setPointerCapture(e.pointerId)};
 renderer.domElement.onpointermove=e=>{if(!drag)return;yaw-=(e.clientX-drag[0])*.006;pitch=Math.max(.06,Math.min(1.4,pitch+(e.clientY-drag[1])*.005));drag=[e.clientX,e.clientY]};
 renderer.domElement.onpointerup=renderer.domElement.onpointercancel=()=>drag=null;
@@ -20,6 +58,6 @@ document.querySelector('#gate').onclick=()=>{target.set(0,3,10);distance=20;pitc
 document.querySelector('#court').onclick=()=>{target.set(0,3,-1);distance=19;pitch=.4;yaw=.4};
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}onresize=resize;resize();
 renderer.setAnimationLoop(()=>{camera.position.set(target.x+Math.sin(yaw)*Math.cos(pitch)*distance,target.y+Math.sin(pitch)*distance,target.z+Math.cos(yaw)*Math.cos(pitch)*distance);camera.lookAt(target);renderer.render(scene,camera)});
-document.querySelector('#status').textContent='גרסת מבנה ראשונית';window.cityReady=true;
+document.querySelector('#status').textContent='גרסת סביבה מעודכנת';window.cityReady=true;window.cityTriangles=triangles;
 })().catch(e=>document.querySelector('#status').textContent='טעינת המודל נכשלה. רעננו לנסות שוב.');
 </script></html>
