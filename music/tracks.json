@@ -51,10 +51,10 @@
     {
       "stageId": 5,
       "stageNameHe": "חיפה",
-      "track": "music/haifa-gardens.mp3",
-      "titleHe": "גני הטרסות",
-      "bpm": 96,
-      "bars": 40
+      "track": "music/carmel-breeze.mp3",
+      "titleHe": "רוח הכרמל",
+      "bpm": 106,
+      "bars": 16
     }
   ],
   "boss": {

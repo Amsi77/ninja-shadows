@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Ninja Shadows — Old City</title>
+<title>Ninja Shadows — Jaffa & Haifa</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
@@ -192,7 +192,7 @@ html,body{overscroll-behavior:none}
 <link rel="stylesheet" href="mobile.css">
 <div class="wrap" dir="rtl">
   <div class="marquee">
-    <h1>Ninja Shadows · העיר העתיקה</h1>
+    <h1>Ninja Shadows · העיר העתיקה וחיפה</h1>
     <p>הרפתקת נינג׳ה · מהנמל אל הגגות</p>
   </div>
 
@@ -328,7 +328,7 @@ function loadSave(){
   try { const r = localStorage.getItem(SAVE_KEY); sv = r ? JSON.parse(r) : null; } catch (e) { sv = null; }
   if (!sv || typeof sv !== 'object') return null;
   if (!sv.v) sv = Object.assign({ v: 1 }, sv);                                    // v1 -> v2 migration
-  const ok = Number.isInteger(sv.stage) && sv.stage >= 0 && sv.stage < 5 && (sv.charKey === 'blue' || sv.charKey === 'red') &&
+  const ok = Number.isInteger(sv.stage) && sv.stage >= 0 && sv.stage < 6 && (sv.charKey === 'blue' || sv.charKey === 'red') &&
     Number.isInteger(sv.diff) && sv.diff >= 0 && sv.diff <= 2;
   if (!ok) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} return null; }  // damaged: drop it, never crash
   sv.v = SAVE_VERSION;
@@ -437,7 +437,7 @@ function blit(L, sx, sy, sw, sh, dx, dy){
 // 1-3. sprites: poses cut from the design sheets, composed into animation strips at load
 // ===================================================================
 const OUT = '#0b0a12';
-const ATLAS = {"meta":{"sguard":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":151,"h":205},"side":{"i":1,"w":91,"h":168},"bash":{"i":2,"w":256,"h":178}}},"striker":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":97,"h":205},"side":{"i":1,"w":55,"h":167},"kick":{"i":2,"w":256,"h":176}}},"echo":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":139,"h":207},"side":{"i":1,"w":90,"h":170},"strike":{"i":2,"w":186,"h":177}}},"raven":{"cw":512,"ch":384,"ax":256,"ay":368,"res":2,"poses":{"stand":{"i":0,"w":171,"h":313},"aim":{"i":1,"w":223,"h":219},"fan":{"i":2,"w":244,"h":195},"leap":{"i":3,"w":166,"h":133},"reload":{"i":4,"w":208,"h":200}}},"emperor":{"cw":512,"ch":384,"ax":256,"ay":368,"res":2,"poses":{"stand":{"i":0,"w":124,"h":332},"charge":{"i":1,"w":277,"h":243},"spin":{"i":2,"w":299,"h":275},"wave":{"i":3,"w":349,"h":253},"kneel":{"i":4,"w":258,"h":245}}},"frost":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":78,"h":197},"throw":{"i":1,"w":229,"h":165},"recover":{"i":2,"w":206,"h":131}}},"drummer":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":129,"h":200},"buff":{"i":1,"w":236,"h":167},"stagger":{"i":2,"w":209,"h":160}}},"pulse":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"idle":{"i":0,"w":105,"h":228,"mz":[12.8,-33.5]},"walk":{"i":1,"w":144,"h":225,"mz":[13.8,-33.5]},"run":{"i":2,"w":191,"h":212,"mz":[25.5,-32.8]},"aim":{"i":3,"w":170,"h":209,"mz":[18.8,-43.2]},"burst":{"i":4,"w":169,"h":215,"mz":[21.8,-45.5]},"sweep":{"i":5,"w":159,"h":163,"mz":[19.8,-32.5]},"recoil":{"i":6,"w":150,"h":212,"mz":[11.8,-46.5]},"overheat":{"i":7,"w":114,"h":218},"dodge":{"i":8,"w":207,"h":192},"hit":{"i":9,"w":141,"h":203},"stagger":{"i":10,"w":179,"h":149},"dead":{"i":11,"w":258,"h":87}}},"chain":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":95,"h":194},"sweep":{"i":1,"w":213,"h":117},"recover":{"i":2,"w":162,"h":124}}},"ember":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":95,"h":191},"shot":{"i":1,"w":188,"h":125},"reload":{"i":2,"w":129,"h":124}}},"shadow":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":28,"h":155},"windup":{"i":1,"w":134,"h":119},"volley":{"i":2,"w":122,"h":110},"leap":{"i":3,"w":117,"h":109},"landing":{"i":4,"w":118,"h":82}}},"warden":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":37,"h":159},"windup":{"i":1,"w":111,"h":134},"charge":{"i":2,"w":132,"h":119},"punch":{"i":3,"w":166,"h":132},"recover":{"i":4,"w":132,"h":110}}},"blue":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"idle":{"i":0,"w":80,"h":112,"tipx":40,"tipy":-2},"run":{"i":1,"w":92,"h":105,"tipx":87,"tipy":-72},"jump":{"i":2,"w":86,"h":99,"tipx":43,"tipy":-63},"punch":{"i":3,"w":119,"h":103,"tipx":69,"tipy":-82},"kick":{"i":4,"w":101,"h":121,"tipx":73,"tipy":-112},"bow":{"i":5,"w":119,"h":134,"tipx":63,"tipy":-94}}},"red":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"idle":{"i":0,"w":74,"h":118,"tipx":38,"tipy":-5},"run":{"i":1,"w":85,"h":107,"tipx":79,"tipy":-72},"jump":{"i":2,"w":64,"h":99,"tipx":32,"tipy":-54},"punch":{"i":3,"w":109,"h":106,"tipx":61,"tipy":-82},"kick":{"i":4,"w":100,"h":117,"tipx":72,"tipy":-104},"throw":{"i":5,"w":110,"h":107,"tipx":56,"tipy":-5}}},"grunt":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":34,"h":113,"tipx":21,"tipy":-47},"attack":{"i":1,"w":116,"h":90,"tipx":72,"tipy":-70}}},"archer":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":48,"h":115,"tipx":26,"tipy":-104},"attack":{"i":1,"w":118,"h":110,"tipx":70,"tipy":-74}}},"thrower":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":32,"h":111,"tipx":20,"tipy":-47},"attack":{"i":1,"w":105,"h":87,"tipx":60,"tipy":-70}}},"boss":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":51,"h":152,"tipx":25,"tipy":-70},"attack":{"i":1,"w":193,"h":137,"tipx":128,"tipy":-109}}},"bluepk":{"cw":192,"ch":176,"ax":96,"ay":168,"poses":{"gapjump":{"i":0,"w":122,"h":98},"hang":{"i":1,"w":39,"h":133},"pullup":{"i":2,"w":84,"h":115},"cling":{"i":3,"w":55,"h":107},"walljump":{"i":4,"w":105,"h":103},"lowroll":{"i":5,"w":118,"h":47}}},"redpk":{"cw":192,"ch":176,"ax":96,"ay":168,"poses":{"gapjump":{"i":0,"w":119,"h":100},"hang":{"i":1,"w":49,"h":126},"pullup":{"i":2,"w":100,"h":108},"cling":{"i":3,"w":59,"h":100},"walljump":{"i":4,"w":100,"h":106},"lowroll":{"i":5,"w":112,"h":53}}},"kit":{"floor_l":[0,0,88,53],"floor_c":[90,0,134,53],"floor_r":[226,0,90,53],"wall":[318,0,127,142],"stairs":[447,0,164,111],"arch":[613,0,142,149],"door":[757,0,86,133],"door_open":[845,0,95,133],"ledge":[942,0,106,74],"pillar":[1050,0,20,105],"platform":[1072,0,100,40],"bridge_l":[1174,0,94,70],"bridge_r":[1270,0,95,70],"moving":[1367,0,135,108],"ladder":[1504,0,45,130],"rope":[1551,0,26,130],"balcony":[1579,0,138,129],"rooftop":[1719,0,144,102],"spikes":[1865,0,61,38],"plate":[1928,0,61,28],"lever_off":[1991,0,46,54],"lever_on":[2039,0,48,53],"gate":[2089,0,65,80],"gate_open":[2156,0,76,81],"crate":[2234,0,48,44],"crate_broken":[2284,0,56,37],"lantern":[2342,0,38,56],"key":[2382,0,30,32],"potion":[2414,0,25,35]},"breaker":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":253,"h":238},"side":{"i":1,"w":109,"h":234},"raise":{"i":2,"w":224,"h":234},"slam":{"i":3,"w":347,"h":181},"recover":{"i":4,"w":166,"h":213}}},"viper":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":102,"h":208},"side":{"i":1,"w":62,"h":208},"windup":{"i":2,"w":210,"h":188},"pull":{"i":3,"w":187,"h":163},"missed":{"i":4,"w":157,"h":190}}}},"img":{"sguard":"assets/sguard.png","striker":"assets/striker.png","echo":"assets/echo.png","raven":"assets/raven.png","emperor":"assets/emperor.png","frost":"assets/frost.png","drummer":"assets/drummer.png","pulse":"assets/pulse.png","chain":"assets/chain.png","ember":"assets/ember.png","logo":"assets/logo.webp","shadow":"assets/shadow.png","warden":"assets/warden.png","paris1":"assets/paris1.jpg","paris2":"assets/paris2.jpg","paris3":"assets/paris3.jpg","paris4":"assets/paris4.jpg","blue":"assets/blue.png","red":"assets/red.png","grunt":"assets/grunt.png","archer":"assets/archer.png","thrower":"assets/thrower.png","boss":"assets/boss.png","bluepk":"assets/bluepk.png","redpk":"assets/redpk.png","kit":"assets/kit.png","breaker":"assets/breaker.png","viper":"assets/viper.png","city1":"assets/city1-hd.png","city2":"assets/city2.jpg","city3":"assets/city3-hd.png","city4":"assets/city4-hd.png","city5":"assets/city5.jpg","city6":"assets/city6.jpg","citymap":"assets/citymap.jpg","haifa1":"assets/haifa1.jpg","haifa2":"assets/haifa2.jpg","haifa3":"assets/haifa3.jpg","haifa4":"assets/haifa4.jpg","haifa5":"assets/haifa5.jpg","haifa6":"assets/haifa6.jpg"}};
+const ATLAS = {"meta":{"sguard":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":151,"h":205},"side":{"i":1,"w":91,"h":168},"bash":{"i":2,"w":256,"h":178}}},"striker":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":97,"h":205},"side":{"i":1,"w":55,"h":167},"kick":{"i":2,"w":256,"h":176}}},"echo":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":139,"h":207},"side":{"i":1,"w":90,"h":170},"strike":{"i":2,"w":186,"h":177}}},"raven":{"cw":512,"ch":384,"ax":256,"ay":368,"res":2,"poses":{"stand":{"i":0,"w":171,"h":313},"aim":{"i":1,"w":223,"h":219},"fan":{"i":2,"w":244,"h":195},"leap":{"i":3,"w":166,"h":133},"reload":{"i":4,"w":208,"h":200}}},"emperor":{"cw":512,"ch":384,"ax":256,"ay":368,"res":2,"poses":{"stand":{"i":0,"w":124,"h":332},"charge":{"i":1,"w":277,"h":243},"spin":{"i":2,"w":299,"h":275},"wave":{"i":3,"w":349,"h":253},"kneel":{"i":4,"w":258,"h":245}}},"frost":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":78,"h":197},"throw":{"i":1,"w":229,"h":165},"recover":{"i":2,"w":206,"h":131}}},"drummer":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":129,"h":200},"buff":{"i":1,"w":236,"h":167},"stagger":{"i":2,"w":209,"h":160}}},"pulse":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"idle":{"i":0,"w":105,"h":228,"mz":[12.8,-33.5]},"walk":{"i":1,"w":144,"h":225,"mz":[13.8,-33.5]},"run":{"i":2,"w":191,"h":212,"mz":[25.5,-32.8]},"aim":{"i":3,"w":170,"h":209,"mz":[18.8,-43.2]},"burst":{"i":4,"w":169,"h":215,"mz":[21.8,-45.5]},"sweep":{"i":5,"w":159,"h":163,"mz":[19.8,-32.5]},"recoil":{"i":6,"w":150,"h":212,"mz":[11.8,-46.5]},"overheat":{"i":7,"w":114,"h":218},"dodge":{"i":8,"w":207,"h":192},"hit":{"i":9,"w":141,"h":203},"stagger":{"i":10,"w":179,"h":149},"dead":{"i":11,"w":258,"h":87}}},"chain":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":95,"h":194},"sweep":{"i":1,"w":213,"h":117},"recover":{"i":2,"w":162,"h":124}}},"ember":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":95,"h":191},"shot":{"i":1,"w":188,"h":125},"reload":{"i":2,"w":129,"h":124}}},"shadow":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":28,"h":155},"windup":{"i":1,"w":134,"h":119},"volley":{"i":2,"w":122,"h":110},"leap":{"i":3,"w":117,"h":109},"landing":{"i":4,"w":118,"h":82}}},"warden":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":37,"h":159},"windup":{"i":1,"w":111,"h":134},"charge":{"i":2,"w":132,"h":119},"punch":{"i":3,"w":166,"h":132},"recover":{"i":4,"w":132,"h":110}}},"blue":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"idle":{"i":0,"w":80,"h":112,"tipx":40,"tipy":-2},"run":{"i":1,"w":92,"h":105,"tipx":87,"tipy":-72},"jump":{"i":2,"w":86,"h":99,"tipx":43,"tipy":-63},"punch":{"i":3,"w":119,"h":103,"tipx":69,"tipy":-82},"kick":{"i":4,"w":101,"h":121,"tipx":73,"tipy":-112},"bow":{"i":5,"w":119,"h":134,"tipx":63,"tipy":-94}}},"red":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"idle":{"i":0,"w":74,"h":118,"tipx":38,"tipy":-5},"run":{"i":1,"w":85,"h":107,"tipx":79,"tipy":-72},"jump":{"i":2,"w":64,"h":99,"tipx":32,"tipy":-54},"punch":{"i":3,"w":109,"h":106,"tipx":61,"tipy":-82},"kick":{"i":4,"w":100,"h":117,"tipx":72,"tipy":-104},"throw":{"i":5,"w":110,"h":107,"tipx":56,"tipy":-5}}},"grunt":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":34,"h":113,"tipx":21,"tipy":-47},"attack":{"i":1,"w":116,"h":90,"tipx":72,"tipy":-70}}},"archer":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":48,"h":115,"tipx":26,"tipy":-104},"attack":{"i":1,"w":118,"h":110,"tipx":70,"tipy":-74}}},"thrower":{"cw":192,"ch":160,"ax":96,"ay":152,"poses":{"stand":{"i":0,"w":32,"h":111,"tipx":20,"tipy":-47},"attack":{"i":1,"w":105,"h":87,"tipx":60,"tipy":-70}}},"boss":{"cw":256,"ch":192,"ax":128,"ay":184,"poses":{"stand":{"i":0,"w":51,"h":152,"tipx":25,"tipy":-70},"attack":{"i":1,"w":193,"h":137,"tipx":128,"tipy":-109}}},"bluepk":{"cw":192,"ch":176,"ax":96,"ay":168,"poses":{"gapjump":{"i":0,"w":122,"h":98},"hang":{"i":1,"w":39,"h":133},"pullup":{"i":2,"w":84,"h":115},"cling":{"i":3,"w":55,"h":107},"walljump":{"i":4,"w":105,"h":103},"lowroll":{"i":5,"w":118,"h":47}}},"redpk":{"cw":192,"ch":176,"ax":96,"ay":168,"poses":{"gapjump":{"i":0,"w":119,"h":100},"hang":{"i":1,"w":49,"h":126},"pullup":{"i":2,"w":100,"h":108},"cling":{"i":3,"w":59,"h":100},"walljump":{"i":4,"w":100,"h":106},"lowroll":{"i":5,"w":112,"h":53}}},"kit":{"floor_l":[0,0,88,53],"floor_c":[90,0,134,53],"floor_r":[226,0,90,53],"wall":[318,0,127,142],"stairs":[447,0,164,111],"arch":[613,0,142,149],"door":[757,0,86,133],"door_open":[845,0,95,133],"ledge":[942,0,106,74],"pillar":[1050,0,20,105],"platform":[1072,0,100,40],"bridge_l":[1174,0,94,70],"bridge_r":[1270,0,95,70],"moving":[1367,0,135,108],"ladder":[1504,0,45,130],"rope":[1551,0,26,130],"balcony":[1579,0,138,129],"rooftop":[1719,0,144,102],"spikes":[1865,0,61,38],"plate":[1928,0,61,28],"lever_off":[1991,0,46,54],"lever_on":[2039,0,48,53],"gate":[2089,0,65,80],"gate_open":[2156,0,76,81],"crate":[2234,0,48,44],"crate_broken":[2284,0,56,37],"lantern":[2342,0,38,56],"key":[2382,0,30,32],"potion":[2414,0,25,35]},"breaker":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":253,"h":238},"side":{"i":1,"w":109,"h":234},"raise":{"i":2,"w":224,"h":234},"slam":{"i":3,"w":347,"h":181},"recover":{"i":4,"w":166,"h":213}}},"viper":{"cw":384,"ch":320,"ax":192,"ay":304,"res":2,"poses":{"stand":{"i":0,"w":102,"h":208},"side":{"i":1,"w":62,"h":208},"windup":{"i":2,"w":210,"h":188},"pull":{"i":3,"w":187,"h":163},"missed":{"i":4,"w":157,"h":190}}}},"img":{"sguard":"assets/sguard.png","striker":"assets/striker.png","echo":"assets/echo.png","raven":"assets/raven.png","emperor":"assets/emperor.png","frost":"assets/frost.png","drummer":"assets/drummer.png","pulse":"assets/pulse.png","chain":"assets/chain.png","ember":"assets/ember.png","logo":"assets/logo.webp","shadow":"assets/shadow.png","warden":"assets/warden.png","paris1":"assets/paris1.jpg","paris2":"assets/paris2.jpg","paris3":"assets/paris3.jpg","paris4":"assets/paris4.jpg","blue":"assets/blue.png","red":"assets/red.png","grunt":"assets/grunt.png","archer":"assets/archer.png","thrower":"assets/thrower.png","boss":"assets/boss.png","bluepk":"assets/bluepk.png","redpk":"assets/redpk.png","kit":"assets/kit.png","breaker":"assets/breaker.png","viper":"assets/viper.png","city1":"assets/city1-hd.png","city2":"assets/city2.jpg","city3":"assets/city3-hd.png","city4":"assets/city4-hd.png","city5":"assets/city5.jpg","city6":"assets/city6.jpg","citymap":"assets/citymap.jpg","haifa1":"assets/haifa-01.webp","haifa2":"assets/haifa-02.webp","haifa3":"assets/haifa-03.webp","haifa4":"assets/haifa-04.webp","haifa5":"assets/haifa-05.webp","haifa6":"assets/haifa-06.webp","carmelSkin":"assets/carmel-boss.webp"}};
 const CHARS = {
   blue:    { label: 'AMSALEM', sub: 'מכה חזק, טווח ארוך',   speed: 1.72, dmg: 1.25, reach: 1.12, startup: 0,  starRec: 10, hp: 110 },
   red:     { label: 'שיר',  sub: 'זריזה, מתאוששת מהר',   speed: 2.3,  dmg: 0.85, reach: 1,    startup: -1, starRec: 5,  hp: 95 },
@@ -770,7 +770,7 @@ function loadSprites(){
     im.onload = () => { IMG[key] = im; res(); };
     im.onerror = () => rej(new Error('sprite failed: ' + key));
     im.src = ATLAS.img[key];
-  }))).then(() => { for (const key of Object.keys(CHARS)) composeChar(key, IMG[key]); });
+  }))).then(() => { for (const key of Object.keys(CHARS).filter(k=>k!=='carmel')) composeChar(key, IMG[key]); SHEET.carmel=SHEET.boss; });
 }
 
 // ===================================================================
@@ -1208,7 +1208,7 @@ function instNote(tr, hz, t, spb){
 }
 // ---- long stage music: streamed files beside the page (one per district + one for bosses) ----
 // Streaming keeps memory low on phones. If a file is missing (offline copy, claude.ai page), the embedded loop plays instead.
-const MUSIC_FILES = ['music/river-lanterns.mp3', 'music/louvre-whispers.mp3', 'music/cathedral-moon.mp3', 'music/montmartre-dawn.mp3', 'music/moonlit-rooftops.mp3', 'music/haifa-gardens.mp3'], BOSS_FILE = 'music/shadow-pulse.mp3';
+const MUSIC_FILES = ['music/river-lanterns.mp3', 'music/louvre-whispers.mp3', 'music/cathedral-moon.mp3', 'music/montmartre-dawn.mp3', 'music/moonlit-rooftops.mp3', 'music/carmel-breeze.mp3'], BOSS_FILE = 'music/shadow-pulse.mp3';
 const ME = {};
 function meGet(url){
   if (ME[url]) return ME[url];
@@ -4359,72 +4359,6 @@ function buildCity(){                         // the Old City (harbour to hillto
       { x: 5380, y: -40, t: 'כיכר המגדל' }],
     start: { x: 70, y: F } });
 }
-function buildHaifa(){                        // Haifa: terraced gardens from the lower gate up to the bay overlook
-  const F = 232, S = (x, y, w, h, o) => Object.assign({ x: x, y: y, w: w, h: h }, o || {});
-  const steps = (x0, y0, n, run, rise) => { const a = []; for (let i = 0; i < n; i++) a.push(S(x0 + i * run, y0 - rise * (i + 1), run + 1, 232 - (y0 - rise * (i + 1)) + 40)); return a; };
-  return parisBase({ id: 5, name: 'חיפה · גני הטרסות', bg: 'city', w: 5800, city: true, camY: true, dataKey: 'haifa',
-    bossX: 5260, bossY: 40, bossKey: 'shadow', bossAfter: 'overlook', bossMission: 'beacon',
-    bossHint: 'קודם הדלק את משואת הטרסה (ושחרר את הגנן בשדרה)',
-    zones: [
-      { id: 'gate',     name: 'שער הגנים',     x0: 0,    x1: 950,  bg: 'haifa1' },
-      { id: 'avenue',   name: 'שדרת המזרקה',   x0: 950,  x1: 1950, bg: 'haifa2' },
-      { id: 'terraces', name: 'מדרגות הטרסות', x0: 1950, x1: 2950, bg: 'haifa3' },
-      { id: 'star',     name: 'גן הכוכב',      x0: 2950, x1: 3950, bg: 'haifa4' },
-      { id: 'pergola',  name: 'מעבר הפרגולה',  x0: 3950, x1: 4900, bg: 'haifa5' },
-      { id: 'overlook', name: 'תצפית המפרץ',   x0: 4900, x1: 5800, bg: 'haifa6' }
-    ],
-    solids: [
-      S(-300, F, 2700, 70),
-      ...steps(2300, 232, 12, 16, 8),                            // the terrace stairs: 232 -> 136
-      S(2492, 136, 260, 136),                                    // the middle terrace
-      ...steps(2752, 136, 12, 16, 8),                            // the upper stairs: 136 -> 40
-      S(2944, 40, 3000, 232),                                    // the upper terraces: star garden, pergola, overlook
-      S(4560, -60, 16, 100, { gate: 1 })                         // the pergola's iron gate (key from the star garden)
-    ],
-    plats: [
-      { x: 1380, y: 204, w: 90, stair: 1 },                      // the fountain rim: stand on it; enemies walk past below
-      { x: 1600, y: 176, w: 120, awning: 1 },                    // a vine-covered arbour over the avenue
-      { x: 4060, y: -16, w: 380, roof: 1 }                       // the pergola roof beams
-    ],
-    climbs: [{ x: 4050, top: -16, bot: 40, edge: 4050, dir: 1 }],
-    crates: [{ x: 520, y: F }, { x: 1180, y: F }, { x: 3300, y: 40 }],
-    lanterns: [{ x: 40, y: F }, { x: 980, y: F }, { x: 2560, y: 136 }, { x: 3000, y: 40 }, { x: 4950, y: 40 }],
-    items: [{ kind: 'wpn', wid: 'kunai', x: 720, y: F - 12 }, { kind: 'wpn', wid: 'firestar', x: 1660, y: 162 }, { kind: 'hp', x: 2620, y: 124 },
-      { kind: 'key', x: 3560, y: 28 }, { kind: 'wpn', wid: 'smoke', x: 4250, y: -30 }, { kind: 'hp', x: 4800, y: 28 }, { kind: 'en', x: 3900, y: 28 }],
-    spawns: [{ t: 'grunt', x: 600, y: F }, { t: 'archer', x: 1660, y: 176 }, { t: 'agile', x: 1800, y: F }, { t: 'thrower', x: 2620, y: 136 },
-      { t: 'viper', x: 3700, y: 40 }, { t: 'ember', x: 4250, y: -16 }, { t: 'shield', x: 4400, y: 40 }],
-    hides: [
-      { id: 'ga', type: 'arch', x: 260 }, { id: 'gh', type: 'hedge', x: 820 },
-      { id: 'ah', type: 'hedge', x: 1250 }, { id: 'ah2', type: 'hedge', x: 1860 },
-      { id: 'tb', type: 'balcony', x: 2660, y: 136, top: 50 }, { id: 'tr', type: 'rail', x: 2560, y: 136 },
-      { id: 'sa', type: 'arch', x: 3080, y: 40 }, { id: 'sh', type: 'hedge', x: 3420, y: 40 }, { id: 'sa2', type: 'arch', x: 3820, y: 40 },
-      { id: 'pd', type: 'roofdrop', x: 4300, y: 40, top: -70 }, { id: 'pa', type: 'arch', x: 4480, y: 40 },
-      { id: 'o1', type: 'arch', x: 5000, y: 40 }, { id: 'o2', type: 'hedge', x: 5200, y: 40 }, { id: 'o3', type: 'roofdrop', x: 5120, y: 40, top: -90 }
-    ],
-    ambushes: [
-      { id: 'gate', x: 620, hint: 'משהו זז מאחורי השיחים…', sets: [[['grunt', 'gh'], ['grunt', 'ga']], [['agile', 'gh'], ['grunt', 'ga']]] },
-      { id: 'avenue', x: 1500, hint: 'השיחים בשדרה רועדים!', sets: [[['grunt', 'ah'], ['agile', 'ah2'], ['thrower', 'ah2']], [['viper', 'ah2'], ['grunt', 'ah']]] },
-      { id: 'terrace', x: 2520, y: 136, hint: 'צל נופל מהמרפסת!', sets: [[['agile', 'tb'], ['grunt', 'tr']], [['grunt', 'tb'], ['viper', 'tr'], ['grunt', 'tb']]] },
-      { id: 'star', x: 3200, y: 40, hint: 'צעדים בתוך הקשתות…', sets: [[['grunt', 'sa'], ['agile', 'sh'], ['chain', 'sa2']], [['echo', 'sh'], ['grunt', 'sa']]] },
-      { id: 'pergola', x: 4150, y: 40, hint: 'עלים נושרים מקורות הפרגולה!', sets: [[['agile', 'pd'], ['grunt', 'pa']], [['grunt', 'pd'], ['frost', 'pa']]] },
-      { id: 'overlook', x: 4980, y: 40, hint: 'תגבורת מכל הכיוונים!', chain: 1, sets: [[['grunt', 'o1'], ['agile', 'o2'], ['grunt', 'o3']], [['viper', 'o2'], ['brute', 'o1'], ['agile', 'o3']]] }
-    ],
-    missions: [
-      { id: 'gardener', x: 1750, y: 232, look: 'marketRescue', title: 'שחרר את הגנן הקשור בשדרת המזרקה', action: 'שחרר גנן', reward: 20, after: 'avenue',
-        needAfter: 'קודם נטרל את המארב בשדרה', done: 'הגנן שוחרר · הוא מספר על מפתח בגן הכוכב', unlock: 'bolt' },
-      { id: 'beacon', x: 4930, y: 40, look: 'towerSignal', title: 'הדלק את משואת הטרסה מעל המפרץ', action: 'הדלק משואה', reward: 30, requires: 'gardener',
-        needReq: 'קודם שחרר את הגנן בשדרת המזרקה', needReqHint: 'הגנן יודע איך להדליק את המשואה — הוא בשדרת המזרקה', done: 'המשואה דולקת · אדון הצללים מגיע!' }
-    ],
-    objFn: () => { const c = cityData(), has = id => c.a.indexOf(id) >= 0, gate = ST.solids.find(q => q.gate);
-      if (!c.missions.gardener) setObj('עלה בשדרת המזרקה ושחרר את הגנן');
-      else if (gate && !gate.open && !(G.player && G.player.hasKey)) setObj('מצא את מפתח הפרגולה בגן הכוכב');
-      else if (gate && !gate.open) setObj('פתח את שער הפרגולה');
-      else if (!c.missions.beacon) setObj('הדלק את משואת הטרסה בתצפית המפרץ');
-      else setObj('הבס את אדון הצללים בתצפית'); },
-    signs: [{ x: 90, y: 104, t: 'שער הגנים' }, { x: 990, y: 104, t: 'שדרת המזרקה' }, { x: 2000, y: 104, t: 'מדרגות הטרסות' },
-      { x: 3000, y: -70, t: 'גן הכוכב' }, { x: 3990, y: -80, t: 'מעבר הפרגולה' }, { x: 4940, y: -70, t: 'תצפית המפרץ' }],
-    start: { x: 70, y: F } });
-}
 function buildParis4(){                       // Montmartre: steep stairs, a forked alley, a climb to the roofs, the final duel
   const F = 232, S = (x, y, w, h, o) => Object.assign({ x: x, y: y, w: w, h: h }, o || {});
   const steps = [];
@@ -4449,7 +4383,7 @@ const STAGE_DEFS = [buildParis1, buildParis2, buildParis3, buildParis4, buildCit
 const STAGE_ORDER = [4, 5, 0, 1, 2, 3], FINAL_STAGE = 3, CITY_STAGE = 4, HAIFA_STAGE = 5;     // play order; indices keep old saves valid
 function nextStage(i){ return STAGE_ORDER[STAGE_ORDER.indexOf(i) + 1]; }
 function stageNo(i){ return STAGE_ORDER.indexOf(i) + 1; }
-const STAGE_NAMES = ['מגדל אייפל והנהר', 'הלובר', 'נוטרדאם', 'מונמארטר', 'העיר העתיקה', 'חיפה'];
+const STAGE_NAMES = ['מגדל אייפל והנהר', 'הלובר', 'נוטרדאם', 'מונמארטר', 'העיר העתיקה', 'חיפה · הכרמל'];
 ST = buildParis1();
 G.save = loadSave();
 G.names = loadNames();
@@ -4947,7 +4881,7 @@ function worldStep(){
     if (!(G.sigHintT > 0)) { say(ST.bossHint || 'קודם השבת את משדר האות שבכניסה לכיכר (ואת הסוחר בשוק)', 150); G.sigHintT = 400; }
   }
   if (G.sigHintT > 0) G.sigHintT--;
-  if (!G.boss && ST.bossX && !G.amb && (!ST.bossAfter || cityData().a.indexOf(ST.bossAfter) >= 0) && (!ST.city || !ST.bossMission || (cityData().missions || {})[ST.bossMission]) && livePlayers().some(p => p.x > ST.bossX)) {      // the courtyard seals and the boss walks in
+  if (!ST.haifa && !G.boss && ST.bossX && !G.amb && (!ST.bossAfter || cityData().a.indexOf(ST.bossAfter) >= 0) && (!ST.city || !ST.bossMission || (cityData().missions || {})[ST.bossMission]) && livePlayers().some(p => p.x > ST.bossX)) {      // the courtyard seals and the boss walks in
     G.locked = true; G.camMin = ST.w - VW;
     G.boss = makeBoss(); G.boss.gy = G.boss.y;
     G.bossIntro = 130;
@@ -5717,6 +5651,7 @@ function completeCityMission(id){
 // ---- the action button: missions, gates, levers, cages, bells — whatever is next to you ----
 function actionNear(){
   const p = G.player; if (!p || !p.alive || G.scene !== 'play') return null;
+  if (ST.haifa) { const t = haifaNear(); if (t) return { label: t.action, run: () => completeHaifaTask(t.id) }; }   // the Haifa chapter's own tasks
   const m = missionNear();
   if (m) { const c = cityData(), blocked = (m.after && !c.a.includes(m.after)) || (m.requires && !c.missions[m.requires]); return { label: blocked ? '🔒 ' + m.action : m.action, run: () => completeCityMission(m.id) }; }
   const sc = ST.shortcut;
@@ -5761,7 +5696,7 @@ function sightClear(f,p){
   return true;
 }
 function alertStep(f){
-  if(!ST.city||f.kind==='echodup'||!f.alive||f.emerge||f.state==='hurt'||f.state==='down'||f.state==='attack'){if(f.emerge)f.alert=100;return true;}
+  if(!(ST.city||ST.haifa)||f.kind==='echodup'||!f.alive||f.emerge||f.state==='hurt'||f.state==='down'||f.state==='attack'){if(f.emerge)f.alert=100;return true;}
   const p=pickTarget(f);if(!p)return true;
   if(f.alert===undefined){f.alert=0;f.homeX=f.x;f.homeY=f.y;f.patrolDir=f.face||-1;}
   const dx=p.x-f.x,dy=Math.abs(p.y-f.y),dist=Math.abs(dx),noisy=/^(attack|dash)$/.test(p.state)||p.shootCd>12;
@@ -6045,7 +5980,185 @@ menuStep=function(){
 const mobileOnBack=onBack;onBack=function(){if(!mobilePowerPanel.hidden){closeMobilePower();return;}mobileOnBack();};
 document.getElementById('touch').removeAttribute('aria-hidden');
 
-window.__yoru = { actionNear: actionNear, doAction: doAction, actionUi: actionUi, safeRespawn, NINJA_POWERS, choosePower, selectedPower, powerStep, stepPowerOrb, clearPowerPath, stormStep, spawnShot, shotsStep, statusStep, drawStorm, ac,  startMotionTrial, MOVES, startMove, playerStep, bodyBox, solidHit, settings:S, G: G, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, get loopClock(){return {last,acc};}, get audio(){return AC;}, get musicBus(){return musBus;}, get canvas(){return cv;}, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, navReach: navReach, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, navMove: navMove, navOk: navOk, cameraStep: cameraStep, powerTier: powerTier, completeCityMission: completeCityMission, cityMissions: CITY_MISSIONS, alertStep: alertStep, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
+// HAIFA CHAPTER MODULE
+// Haifa chapter: game geometry is the source of truth for art, navigation and minimap.
+const HAIFA_ID=5;
+const HAIFA_ZONES=[
+ {id:'gate',name:'שערי הכרמל',x0:0,x1:1000},
+ {id:'fountain',name:'שביל המזרקות',x0:1000,x1:2000},
+ {id:'stairs',name:'מדרגות הטרסות',x0:2000,x1:3050},
+ {id:'terrace',name:'מרפסת הגנים',x0:3050,x1:4200},
+ {id:'pergola',name:'המעבר המוצל',x0:4200,x1:5400},
+ {id:'overlook',name:'תצפית המפרץ',x0:5400,x1:6400}
+];
+const HAIFA_TASKS=[
+ {id:'map',x:460,y:232,label:'אסוף את מפת המסלול',action:'אסוף מפה',reward:10},
+ {id:'relay1',x:1690,y:232,label:'השבת משדר בשביל המזרקות',action:'השבת משדר',reward:12,requires:['map']},
+ {id:'courier',x:3540,y:40,label:'חלץ את השליח במרפסת הגנים',action:'חלץ שליח',reward:20,requires:['relay1']},
+ {id:'relay2',x:3810,y:40,label:'השבת את משדר המרפסת',action:'השבת משדר',reward:12,requires:['courier']},
+ {id:'relay3',x:5140,y:-152,label:'השבת את המשדר במעבר המוצל',action:'השבת משדר',reward:16,requires:['relay2']}
+];
+function buildHaifa(){
+ const solids=[],S=(x,y,w,h=500)=>solids.push({x,y,w,h,haifaStone:true});
+ S(-300,232,2370); // gate and fountain promenade
+ for(let i=0;i<12;i++)S(2070+i*18,224-i*8,18);
+ S(2286,136,264);
+ for(let i=0;i<12;i++)S(2550+i*18,128-i*8,18);
+ S(2766,40,1154);
+ for(let i=0;i<12;i++)S(3920+i*18,32-i*8,18);
+ S(4136,-56,484);
+ for(let i=0;i<12;i++)S(4620+i*18,-64-i*8,18);
+ S(4836,-152,1864);
+ const gate={x:4410,y:-122,w:12,h:66,gate:1,haifaGate:1};solids.push(gate);
+ return parisBase({id:6,name:'חיפה · צללים בכרמל',haifa:true,camY:true,w:6400,bossX:5820,bossY:-152,bossKey:'carmel',
+  solids,plats:[{x:780,y:186,w:110},{x:1030,y:150,w:140},{x:1330,y:186,w:120},{x:3140,y:-10,w:130},{x:3370,y:-40,w:120},{x:3700,y:-10,w:130}],
+  climbs:[],start:{x:70,y:232},
+  crates:[{x:650,y:232},{x:1450,y:232},{x:3250,y:40},{x:4540,y:-56}],
+  lanterns:[{x:70,y:232},{x:1880,y:232},{x:2870,y:40},{x:3660,y:40},{x:5540,y:-152}],
+  items:[{kind:'hp',x:1900,y:215},{kind:'en',x:2880,y:20},{kind:'star',x:3400,y:-55},{kind:'hp',x:5560,y:-170}],
+  spawns:[{t:'grunt',x:740,y:232},{t:'archer',x:1370,y:186},{t:'agile',x:1840,y:232},{t:'brute',x:2370,y:136},{t:'thrower',x:2900,y:40},{t:'shield',x:3420,y:40},{t:'echo',x:3770,y:40},{t:'chain',x:4450,y:-56},{t:'viper',x:5020,y:-152},{t:'agile',x:5570,y:-152}],
+  zones:HAIFA_ZONES.map(z=>({...z})),haifaGate:gate,
+  haifaAmbushes:[{id:'arch',x:850,y:232,kind:'agile',dir:-1},{id:'hedge',x:1540,y:232,kind:'grunt',dir:1},{id:'cypress',x:3130,y:40,kind:'echo',dir:-1},{id:'pergola',x:4890,y:-152,kind:'chain',dir:1}]
+ });
+}
+function haifaData(){const s=SY();if(!s.haifa||typeof s.haifa!=='object')s.haifa={};const h=s.haifa;for(const k of ['missions','visited','ambushes'])if(!h[k]||typeof h[k]!=='object'||Array.isArray(h[k]))h[k]={};return h;}
+function haifaObjective(){if(!ST.haifa)return;const h=haifaData();const task=HAIFA_TASKS.find(t=>!h.missions[t.id]);setObj(task?task.label:h.bossDown?'הכרמל חופשי · המשך המסע לפריז':'הגע לתצפית והבס את אדון הרוחות');}
+function haifaNear(){if(!ST.haifa||G.scene!=='play')return null;const h=haifaData();return HAIFA_TASKS.find(t=>!h.missions[t.id]&&livePlayers().some(p=>Math.abs(p.x-t.x)<36&&Math.abs(p.y-t.y)<18))||null;}
+function completeHaifaTask(id){
+ if(!ST.haifa||G.scene!=='play')return false;const t=haifaNear(),h=haifaData();if(!t||t.id!==id||h.missions[id])return false;
+ if((t.requires||[]).some(k=>!h.missions[k])){say('השלם תחילה את היעד המסומן',80);return false;}
+ if(G.foes.some(f=>f.alive&&Math.abs(f.x-t.x)<90&&Math.abs(f.y-t.y)<45)){say('נטרל תחילה את האויבים בקרבת היעד',80);return false;}
+ h.missions[id]=true;addCoins(t.reward,t.x,t.y-38);G.check={x:t.x,y:t.y};
+ if(id==='courier'){ST.haifaGate.open=true;SY().unlocked.fire=true;big('השליח חולץ · שער המעבר נפתח',85);}
+ else big(id==='map'?'מפת המסלול נמצאה':'משדר הושבת',70);
+ SFX.unlock();haifaObjective();writeSave(G.check);return true;
+}
+const haifaButton=document.createElement('button');haifaButton.id='haifaInteract';haifaButton.hidden=true;haifaButton.type='button';haifaButton.style.cssText='position:absolute;bottom:24%;left:50%;transform:translateX(-50%);z-index:25;min-height:44px;padding:8px 14px;border:1px solid #ead49c;border-radius:14px;background:#213b36e8;color:#fff1c9;font:bold 16px sans-serif;touch-action:manipulation;';document.getElementById('screen').appendChild(haifaButton);
+haifaButton.onclick=()=>{const t=haifaNear();if(t)completeHaifaTask(t.id);};
+window.addEventListener('keydown',e=>{if(e.code==='KeyF'&&!G.two&&!e.repeat&&ST.haifa&&G.scene==='play'&&!['INPUT','TEXTAREA'].includes(e.target.tagName)){const t=haifaNear();if(t){e.preventDefault();completeHaifaTask(t.id);}}});
+const baseHaifaLoad=loadStage;
+loadStage=function(i){SHEET.carmel=SHEET.boss;baseHaifaLoad(i);haifaButton.hidden=true;if(ST.haifa){G.haifaAmbush=null;G.lookAhead=0;const h=haifaData();ST.haifaGate.open=!!h.missions.courier;haifaObjective();G.camY=32;}};
+const baseHaifaQuest=questInit;
+questInit=function(){if(ST.haifa){haifaObjective();return;}baseHaifaQuest();};
+const baseHaifaWorld=worldStep;
+worldStep=function(){baseHaifaWorld();if(ST.haifa)haifaStep();};
+function haifaStep(){
+ const p=G.player,h=haifaData();if(!p?.alive)return;
+ const z=HAIFA_ZONES.find(z=>p.x>=z.x0&&p.x<z.x1)||HAIFA_ZONES.at(-1);
+ if(G.haifaZone!==z.id){G.haifaZone=z.id;h.visited[z.id]=true;G.haifaBanner={name:z.name,t:140};haifaObjective();}
+ if(G.haifaBanner?.t>0)G.haifaBanner.t--;
+ if(G.haifaAmbush){const a=G.haifaAmbush;a.t++;
+  if(a.t===1)say('רשרוש מעבר לחומה…',70);
+  if(a.t===48){let x=Math.max(30,Math.min(ST.w-40,p.x+(a.def.dir||1)*120));const y=haifaFloor(x);const f=makeFoe(a.def.kind,x);Object.assign(f,{y,gy:y,cd:65,alert:100,face:p.x>x?1:-1,emerge:{type:'drop',t:0,dir:p.x>x?1:-1,shadowY:y,land:0}});f.y=y-100;G.foes.push(f);h.ambushes[a.def.id]=true;G.haifaAmbush=null;writeSave(G.check);}
+ }else if(!G.boss){const a=ST.haifaAmbushes.find(a=>!h.ambushes[a.id]&&p.x>=a.x&&p.x<a.x+100&&Math.abs(p.y-a.y)<25);if(a)G.haifaAmbush={def:a,t:0};}
+ const t=haifaNear();haifaButton.hidden=!t;if(t)haifaButton.textContent=t.action+(G.two?'':' · F');
+ if(!G.boss&&!h.bossDown&&p.x>ST.bossX){
+  if(HAIFA_TASKS.some(t=>!h.missions[t.id])){p.x=ST.bossX-2;p.vx=Math.min(0,p.vx);say('השבת את שלושת המשדרים לפני הקרב',75);}
+  else {SHEET.carmel=SHEET.boss;G.locked=true;G.camMin=ST.w-VW;G.boss=makeBoss();Object.assign(G.boss,{key:'carmel',haifaBoss:true,hp:360*DIFF[G.diff].hpK,hpMax:360*DIFF[G.diff].hpK,gy:-152,y:-152,seq:0,cd:60});G.bossIntro=100;big('אדון הרוחות · שומר הכרמל',100);MUS.boss=true;}
+ }
+}
+function haifaFloor(x){let y=9999;for(const s of ST.solids)if(!s.haifaGate&&!s.open&&x>=s.x&&x<s.x+s.w)y=Math.min(y,s.y);return y;}
+CHARS.carmel={label:'אדון הרוחות'};
+const baseHaifaBoss=bossStep;
+bossStep=function(b){
+ if(!b.haifaBoss)return baseHaifaBoss(b);
+ if(!b.alive){if(b.deadT>0){b.deadT--;b.vx*=.9;b.x+=b.vx;return;}const h=haifaData();if(!h.bossDown){h.bossDown=true;SY().unlocked.carmel=true;addCoins(40);G.bossesDown=G.bossesDown||[];if(!G.bossesDown.includes(5))G.bossesDown.push(5);G.reward='סערת הכרמל נפתחה · המסע ממשיך לפריז';G.check={x:5540,y:-152};G.score+=5000;SFX.victory();}G.scene='clear';MUS.boss=false;const st=G.stage;G.stage=nextStage(st);writeSave();G.stage=st;return;}
+ const p=pickTarget(b);if(!p)return;b.flashT=Math.max(0,b.flashT-1);b.phase=b.hp/b.hpMax>.66?1:b.hp/b.hpMax>.33?2:3;b.face=p.x>=b.x?1:-1;
+ const lo=ST.w-VW+30,hi=ST.w-30;
+ if(b.state!=='attack'){
+  if(b.exposed>0){b.exposed--;b.an='crouch';return;}
+  b.cd--;const d=Math.abs(p.x-b.x);if(d>85){b.x+=b.face*1.1;b.an='run';}else b.an='idle';
+  if(b.cd<=0){b.state='attack';b.mf=0;b.hitDone=false;b.attack=['blade','wind','echo'][b.seq++%b.phase];b.an='rage';say(b.attack==='blade'?'הלהבים נטענים — התרחק או חסום':b.attack==='wind'?'גל נמוך מתקרב — קפוץ':'המקור מסומן בחגורה בצבע טורקיז',70);}return;
+ }
+ b.mf++;const t=b.mf;
+ if(b.attack==='blade'){
+  if(t>=38&&t<58){b.an='punch2';b.x+=b.face*2.7;if(!b.hitDone){const box=faceBox(b,[6,-62,62,48]);for(const q of livePlayers())if(overlap(box,hurtBox(q))){hurtPlayer(q,b.dmg,b.x,false);b.hitDone=true;}}}
+ }else if(b.attack==='wind'){
+  if(t===48){b.an='slam';for(const dir of [-1,1])G.shots.push({kind:'wave',x:b.x+dir*18,y:b.y,vx:dir*3.2,dmg:b.dmg*.75,from:'e',life:120});SFX.swing();}
+ }else{
+  b.haifaClones=t<55;
+  if(t===55){b.haifaClones=false;const target=p.x+(b.x<p.x?-70:70);b.x=Math.max(lo,Math.min(hi,target));b.an='punch2';}
+  if(t>=60&&t<=67&&!b.hitDone&&Math.abs(p.x-b.x)<75&&Math.abs(p.y-b.y)<62){hurtPlayer(p,b.dmg*.8,b.x,false);b.hitDone=true;}
+ }
+ b.x=Math.max(lo,Math.min(hi,b.x));if(t>85){b.state='idle';b.cd=38;b.exposed=42;b.haifaClones=false;b.an='crouch';}
+};
+// Extend the user's existing three powers, without replacing their behaviour.
+const baseHaifaPower=activatePower;
+activatePower=function(p){const was=p.castT>0||p.pwT>0;const out=baseHaifaPower(p);if(!was&&SY().unlocked.carmel&&(p.castT>0||p.pwT>0)){p.carmelBuff=420;pop(p.x,p.y-75,'סערת הכרמל','#8fe8d7');}return out;};
+const baseHaifaPlayer=playerStep;
+playerStep=function(p){if(p.carmelBuff>0)p.carmelBuff--;baseHaifaPlayer(p);};
+const baseHaifaDamage=damageFoe;
+damageFoe=function(f,dmg,dir,m,hx,hy,p,fromDir){if(p?.carmelBuff>0)dmg*=1.15;return baseHaifaDamage(f,dmg,dir,m,hx,hy,p,fromDir);};
+// Deterministic, resolution-independent scenery, aligned to collision surfaces.
+function haifaCypress(x,y,h=80){const g=cx.createLinearGradient(x-10,y-h,x+10,y);g.addColorStop(0,'#406653');g.addColorStop(.5,'#153a32');g.addColorStop(1,'#1c312b');cx.fillStyle='#69533b';cx.fillRect(x-1.5,y-15,3,18);cx.fillStyle=g;cx.beginPath();cx.moveTo(x,y-h);cx.bezierCurveTo(x-16,y-h*.45,x-14,y-5,x,y);cx.bezierCurveTo(x+15,y-6,x+13,y-h*.45,x,y-h);cx.fill();}
+function haifaRail(x,y,w){cx.fillStyle='#c9b99b';cx.fillRect(x,y-24,w,3);cx.fillStyle='#f4e8cc';cx.fillRect(x,y-26,w,3);cx.fillRect(x,y-3,w,4);for(let k=4;k<w;k+=13){cx.fillStyle='#d9cbac';cx.fillRect(x+k,y-23,3,21);cx.fillStyle='#fff0d0';cx.fillRect(x+k,y-21,1,18);}}
+function drawHaifa(){
+ const cam=G.cam,cy=G.camY||0;cx.save();cx.translate(0,cy);
+ const sky=cx.createLinearGradient(0,0,0,VH);sky.addColorStop(0,'#6bafc3');sky.addColorStop(.55,'#d5dbc3');sky.addColorStop(1,'#f3ddaf');cx.fillStyle=sky;cx.fillRect(0,0,VW,VH);
+ cx.fillStyle='#60969e';cx.fillRect(0,80,VW,53);cx.fillStyle='#bed0c6';cx.fillRect(0,79,VW,1);
+ for(let i=-2;i<42;i++){const x=i*18-(cam*.09%18),h=10+((i*17+83)%29+29)%29;cx.fillStyle=['#abae9c','#c7c3a8','#a6b8b1'][((i%3)+3)%3];cx.fillRect(x,132-h,16,h);cx.fillStyle='#778f8c';for(let k=0;k<3;k++)cx.fillRect(x+3+k*4,136-h,2,2);}
+ cx.strokeStyle='#6a8587';cx.lineWidth=1;for(let i=0;i<5;i++){const x=80+i*100-cam*.025;cx.beginPath();cx.moveTo(x,112);cx.lineTo(x,88);cx.lineTo(x+23,82);cx.moveTo(x,90);cx.lineTo(x+20,90);cx.stroke();}
+ // Golden dome is a distant landmark, never a platform.
+ const domeX=280-cam*.025;cx.fillStyle='#dac39b';cx.fillRect(domeX-14,127,28,25);cx.fillStyle='#d0a65f';cx.beginPath();cx.ellipse(domeX,125,17,17,0,Math.PI,0);cx.fill();cx.strokeStyle='#f6dda1';for(let i=-2;i<=2;i++){cx.beginPath();cx.moveTo(domeX+i*5,110);cx.lineTo(domeX+i*6,125);cx.stroke();}cx.fillStyle='#8a8065';for(let i=-2;i<=2;i++)cx.fillRect(domeX+i*5-1,131,2,13);
+ cx.fillStyle='#71877a';cx.beginPath();cx.moveTo(0,157);for(let x=0;x<=VW;x+=12)cx.lineTo(x,151+Math.sin((x+cam*.16)*.02)*9);cx.lineTo(VW,VH);cx.lineTo(0,VH);cx.fill();cx.restore();
+ const floor=haifaFloor(Math.min(ST.w-1,cam+VW/2));
+ const zi=Math.max(0,HAIFA_ZONES.findIndex(z=>cam+VW/2>=z.x0&&cam+VW/2<z.x1)),zone=HAIFA_ZONES[zi],im=IMG['haifa'+(zi+1)];
+ if(im){const shift=Math.max(0,Math.min(1,(cam-zone.x0)/Math.max(1,zone.x1-zone.x0)))*24;cx.drawImage(im,-shift,floor-232,VW+24,VH);const edge=zone.x1-(cam+VW/2);if(edge<140&&zi<5){const ni=IMG['haifa'+(zi+2)];if(ni){cx.save();cx.globalAlpha=1-Math.max(0,edge)/140;cx.drawImage(ni,0,floor-232,VW+24,VH);cx.restore();}}}
+
+ // Background garden terraces and hedges lie behind the playable path.
+ if(!im)for(let x=Math.floor(cam/75)*75-75;x<cam+VW+75;x+=75){const y=haifaFloor(Math.max(0,Math.min(6399,x)));haifaCypress(x-cam,y-20,65+((x/75|0)%3)*12);cx.fillStyle='#294d39';cx.fillRect(x-cam-30,y-13,60,12);cx.fillStyle='#537944';cx.fillRect(x-cam-30,y-14,60,3);for(let k=0;k<6;k++){cx.fillStyle=k%2?'#d8ba77':'#ba827f';cx.beginPath();cx.arc(x-cam-25+k*10,y-11,1.1,0,7);cx.fill();}}
+ for(const s of ST.solids){if(s.open||s.haifaGate)continue;const x=s.x-cam;if(x>VW||x+s.w<0)continue;const y=s.y,w=s.w;const g=cx.createLinearGradient(x,y,x,y+90);g.addColorStop(0,'#d9c39a');g.addColorStop(1,'#a48e6c');cx.fillStyle=g;cx.fillRect(x,y,w,Math.min(s.h,700));cx.fillStyle='#f8e7bf';cx.fillRect(x,y,w,3);cx.fillStyle='#b78260';cx.fillRect(x,y+3,w,5);cx.strokeStyle='#9d896b';cx.lineWidth=.45;const left=Math.max(x,-35),right=Math.min(x+w,VW+35);for(let row=0;row<24;row++){let yy=y+11+row*14;cx.beginPath();cx.moveTo(left,yy);cx.lineTo(right,yy);cx.stroke();for(let xx=Math.floor(left/32)*32+(row%2)*16;xx<right;xx+=32){cx.beginPath();cx.moveTo(xx,yy);cx.lineTo(xx,yy+14);cx.stroke();}}if(w>80)haifaRail(Math.max(-20,x),y-15,Math.min(w,VW+40));}
+ for(const q of ST.plats){const x=q.x-cam;cx.fillStyle='#c9b38b';cx.fillRect(x,q.y,q.w,8);cx.fillStyle='#f6e5bd';cx.fillRect(x,q.y,q.w,2);haifaRail(x,q.y-8,q.w);}
+ // Distinct objects for six locations.
+ if(!im)for(const x0 of [80,980]){const x=x0-cam,y=232;cx.fillStyle='#d4c19c';cx.fillRect(x,y-86,13,86);cx.fillStyle='#f3e5c5';cx.fillRect(x-2,y-88,17,6);cx.beginPath();cx.arc(x+6,y-96,5,0,7);cx.fill();}
+ if(!im)for(const fx of [1220,1770]){const x=fx-cam,y=232;cx.fillStyle='#b5b391';cx.beginPath();cx.ellipse(x,y-13,35,9,0,0,7);cx.fill();cx.fillStyle='#6dacae';cx.beginPath();cx.ellipse(x,y-15,30,6,0,0,7);cx.fill();cx.fillStyle='#e5d9b5';cx.fillRect(x-3,y-48,6,32);cx.beginPath();cx.ellipse(x,y-45,16,4,0,0,7);cx.fill();cx.strokeStyle='#a5d9d2';cx.lineWidth=.8;for(let k=-2;k<=2;k++){cx.beginPath();cx.moveTo(x,y-48);cx.quadraticCurveTo(x+k*7,y-70,x+k*12,y-16);cx.stroke();}}
+ if(!im)for(let x0=4270;x0<4580;x0+=58){const x=x0-cam,y=-56;cx.fillStyle='#c7b18b';cx.fillRect(x,y-90,6,90);cx.fillStyle='#6a6b42';cx.fillRect(x-5,y-94,69,6);for(let k=0;k<5;k++){cx.fillStyle='#456641';cx.beginPath();cx.ellipse(x+k*12,y-95,8,4,0,0,7);cx.fill();}}
+ const gate=ST.haifaGate;if(!gate.open){const x=gate.x-cam;cx.fillStyle='#334a42';cx.fillRect(x,gate.y,gate.w,gate.h);cx.fillStyle='#ceaa68';cx.fillRect(x+3,gate.y+26,6,5);}
+ for(const c of ST.crates)if(!c.broken){const x=c.x-cam;cx.fillStyle='#876e4e';cx.fillRect(x-12,c.y-24,24,24);cx.strokeStyle='#c0a875';cx.strokeRect(x-12,c.y-24,24,24);cx.beginPath();cx.moveTo(x-12,c.y-24);cx.lineTo(x+12,c.y);cx.stroke();}
+ for(const l of ST.lanterns){const x=l.x-cam,y=l.y;cx.fillStyle='#4e5a49';cx.fillRect(x-1,y-48,2,48);cx.fillStyle=l.lit?'#ffe2a0':'#b9c7ad';cx.fillRect(x-4,y-55,8,8);if(l.lit){const glow=cx.createRadialGradient(x,y-51,0,x,y-51,20);glow.addColorStop(0,'#ffe7a64a');glow.addColorStop(1,'#ffe7a600');cx.fillStyle=glow;cx.fillRect(x-20,y-71,40,40);}}
+ const h=haifaData();for(const t of HAIFA_TASKS){const x=t.x-cam,y=t.y;if(x<-40||x>VW+40)continue;const done=h.missions[t.id];
+ if(t.id==='map'){cx.fillStyle='#d9bd80';cx.fillRect(x-9,y-20,18,14);cx.strokeStyle='#7b694d';cx.beginPath();cx.moveTo(x-6,y-16);cx.lineTo(x,y-9);cx.lineTo(x+6,y-17);cx.stroke();}
+ else if(t.id==='courier'){cx.fillStyle='#576557';cx.fillRect(x-5,y-30,10,27);cx.fillStyle='#bda083';cx.beginPath();cx.arc(x,y-35,4,0,7);cx.fill();if(!done){cx.strokeStyle='#53584d';for(let k=-12;k<=12;k+=6){cx.beginPath();cx.moveTo(x+k,y-48);cx.lineTo(x+k,y);cx.stroke();}}}
+ else{cx.fillStyle='#344f46';cx.fillRect(x-7,y-26,14,26);cx.fillStyle=done?'#8ccfa7':'#e1a66b';cx.fillRect(x-3,y-22,6,4);cx.strokeStyle='#526355';cx.beginPath();cx.moveTo(x,y-26);cx.lineTo(x,y-51);cx.stroke();if(!done){cx.strokeStyle='#aee2ca';cx.beginPath();cx.arc(x,y-51,8+Math.sin(G.tick*.06)*2,-.6,.6);cx.stroke();}}
+ cx.font='bold 9px sans-serif';cx.textAlign='center';cx.fillStyle=done?'#8bd0a3':'#ffdb94';cx.fillText(done?'✓':'◇',x,y-61);
+ }
+ if(G.haifaAmbush){const a=G.haifaAmbush;const x=predictAmbushX(a)-cam,y=haifaFloor(predictAmbushX(a));cx.fillStyle='#253a3370';cx.beginPath();cx.ellipse(x,y,10,3,0,0,7);cx.fill();}
+}
+function predictAmbushX(a){return Math.max(30,Math.min(ST.w-40,G.player.x+(a.def.dir||1)*120));}
+const baseHaifaDraw=drawWorld;drawWorld=function(){if(ST.haifa){drawHaifa();return;}baseHaifaDraw();};
+// Original boss silhouette: curved blades, stone shoulder armour and a teal split cloak.
+function drawCarmel(b,alpha=1,offset=0,clone=false){const x=b.x-G.cam+offset,y=b.y;
+ const skin=IMG.carmelSkin;
+ if(skin){const columns=[0,482,1020,1690,2172],anchors=[230,755,1380,1940];let pose=(!b.alive||b.exposed>0)?3:b.state==='attack'?(b.mf<38?1:b.mf<68?2:3):0;const k=.124;const sy=b.an==='run'?Math.sin(G.tick*.2)*1.4:Math.sin(G.tick*.035)*.35;cx.save();cx.globalAlpha*=alpha;cx.translate(x,y+sy);cx.scale(b.face||1,1);if(clone)cx.filter='grayscale(.8)';else if(b.flashT>0)cx.filter='brightness(1.7)';cx.drawImage(skin,columns[pose],0,columns[pose+1]-columns[pose],724,-(anchors[pose]-columns[pose])*k,-695*k,(columns[pose+1]-columns[pose])*k,724*k);cx.restore();if(b.state==='attack'&&b.mf<38){cx.save();cx.strokeStyle=clone?'#b2c3b440':'#c4f2dfaa';cx.lineWidth=.8;cx.beginPath();cx.arc(x,y-40,35+b.mf*.15,-1,1);cx.stroke();cx.restore();}return;}
+cx.save();cx.globalAlpha*=alpha;cx.translate(x,y);cx.scale(b.face||1,1);const moving=b.an==='run',stride=moving?Math.sin(G.tick*.18)*6:2;const crouch=b.exposed>0?8:0;cx.translate(0,crouch);const attack=b.state==='attack'&&b.mf>=38&&b.mf<68;
+ cx.fillStyle=clone?'#34453f':'#264e47';cx.beginPath();cx.moveTo(-10,-65);cx.lineTo(-24,-12);cx.lineTo(-7,-20);cx.lineTo(-3,-3);cx.lineTo(4,-20);cx.lineTo(19,-8);cx.lineTo(12,-65);cx.fill();
+ function limb(a,c,width,col){cx.strokeStyle=col;cx.lineWidth=width;cx.lineCap='round';cx.beginPath();cx.moveTo(...a);cx.lineTo(...c);cx.stroke();}
+ limb([-6,-29],[-9-stride,-6],10,'#25302e');limb([7,-29],[11+stride,-6],10,'#333c35');limb([-9-stride,-5],[-15-stride,-3],7,'#242c2b');limb([11+stride,-5],[19+stride,-3],7,'#242c2b');
+ const body=cx.createLinearGradient(-12,-65,12,-25);body.addColorStop(0,'#64705b');body.addColorStop(1,'#303e36');cx.fillStyle=b.flashT>0?'#d3e6c5':body;cx.beginPath();cx.moveTo(-12,-65);cx.lineTo(12,-65);cx.lineTo(10,-30);cx.lineTo(-11,-30);cx.fill();
+ cx.fillStyle='#c7bb96';cx.beginPath();cx.ellipse(-13,-60,8,5,-.35,0,7);cx.fill();cx.beginPath();cx.ellipse(13,-60,8,5,.35,0,7);cx.fill();cx.fillStyle=clone?'#5d6959':'#71cbbb';cx.fillRect(-12,-33,24,4);if(!clone){cx.fillRect(4,-31,4,17);}
+ cx.fillStyle='#293d36';cx.beginPath();cx.ellipse(0,-74,9,11,0,0,7);cx.fill();cx.fillStyle='#b7a88a';cx.fillRect(0,-76,9,10);cx.fillStyle='#d5e9bd';cx.fillRect(2,-78,5,1.4);
+ const armY=attack?-55:-44,armX=attack?33:17;limb([11,-57],[armX,armY],7,'#414e40');limb([-12,-56],[-18,-40],7,'#39493d');
+ cx.strokeStyle='#e5dec0';cx.lineWidth=2;for(const [wx,wy] of [[armX,armY],[-18,-40]]){cx.beginPath();cx.moveTo(wx,wy+4);cx.quadraticCurveTo(wx+20,wy-10,wx+12,wy-29);cx.quadraticCurveTo(wx+13,wy-10,wx+3,wy-2);cx.stroke();cx.strokeStyle='#b8a36e';cx.beginPath();cx.moveTo(wx-4,wy+3);cx.lineTo(wx+5,wy+3);cx.stroke();cx.strokeStyle='#e5dec0';}
+ if(b.state==='attack'&&b.mf<38){cx.strokeStyle='#c7e5c5';cx.lineWidth=.9;cx.beginPath();cx.arc(0,-40,35+b.mf*.15,-1,1);cx.stroke();}cx.restore();}
+const baseHaifaActor=drawActor;drawActor=function(e,alpha){if(e.haifaBoss){if(e.haifaClones){drawCarmel(e,.32,-92,true);drawCarmel(e,.32,92,true);}drawCarmel(e,alpha);return;}baseHaifaActor(e,alpha);};
+const baseHaifaHud=drawHud;drawHud=function(){baseHaifaHud();if(!ST.haifa)return;const h=haifaData(),x=7,y=45,w=78,hh=41;cx.save();glass(x,y,w,hh,5);cx.strokeStyle='#adc1a5';cx.lineWidth=1.2;cx.beginPath();
+ for(let i=0;i<=64;i++){const xx=i*100,yy=haifaFloor(Math.min(6399,xx));const mx=x+5+xx/6400*(w-10),my=y+hh-5-(232-yy)/384*(hh-11);if(i===0)cx.moveTo(mx,my);else cx.lineTo(mx,my);}cx.stroke();
+ for(let i=0;i<6;i++){const z=HAIFA_ZONES[i],xx=(z.x0+z.x1)/2;cx.fillStyle=h.visited[z.id]?'#e0c67e':'#60766c';cx.beginPath();cx.arc(x+5+xx/6400*(w-10),y+hh-5-(232-haifaFloor(xx))/384*(hh-11),2,0,7);cx.fill();}
+ for(const t of HAIFA_TASKS){if(!h.missions.map)break;cx.fillStyle=h.missions[t.id]?'#7ca985':'#ebbd69';cx.fillRect(x+4+t.x/6400*(w-10),y+hh-7-(232-t.y)/384*(hh-11),2,3);}
+ if(G.player){cx.fillStyle='#ffefb2';cx.beginPath();cx.arc(x+5+G.player.x/6400*(w-10),y+hh-5-(232-G.player.y)/384*(hh-11),2,0,7);cx.fill();}
+ cx.font='700 6px sans-serif';cx.textAlign='left';cx.fillStyle='#f2dfb0';cx.fillText('חיפה · '+Object.keys(h.visited).length+'/6',x+4,y+hh+8);
+ if(G.haifaBanner?.t>0&&G.bigT<=0){cx.textAlign='center';cx.font='bold 12px sans-serif';cx.fillStyle='#fff0c8';cx.fillText(G.haifaBanner.name,VW/2,65);}cx.restore();};
+const baseHaifaMenu=menuStep;menuStep=function(){baseHaifaMenu();if(G.scene!=='play'||!ST.haifa)haifaButton.hidden=true;};
+const haifaLaunch=document.createElement('button');haifaLaunch.id='btnHaifa';haifaLaunch.type='button';haifaLaunch.textContent='חיפה · התחל פרק חדש';haifaLaunch.title='מתחיל ריצה חדשה בחיפה עם שמירה אוטומטית';haifaLaunch.style.cssText='padding:10px 16px;border:1px solid #b9c8a8;border-radius:12px;background:#23473e;color:#f5dfaa;font-weight:bold;cursor:pointer;margin:6px;';document.getElementById('btnReset').parentElement.appendChild(haifaLaunch);
+function startHaifa(){G.two=false;G.twoIdx=0;G.runId++;startRun(false);S.r3=false;elR3.checked=false;loadStage(5);G.scene='play';MUS.on=true;document.getElementById('storyBox').hidden=true;document.getElementById('nameBox').hidden=true;dropKeys();clearPressed();}
+haifaLaunch.onclick=startHaifa;
+// Visible, gameplay-relevant chapter reward: a close wind pulse on the existing cast.
+const baseCarmelRelease=releaseTechnique;
+releaseTechnique=function(p,type){baseCarmelRelease(p,type);if(!(p.carmelBuff>0))return;for(const f of techniqueTargets())if(f.alive&&!f.emerge&&Math.abs(f.x-p.x)<105&&Math.abs(f.y-p.y)<65&&clearPowerPath(p.x,p.y-30,f.x,f.y-30))damageFoe(f,8,Math.sign(f.x-p.x)||p.face,{kb:4,stun:18,heavy:1,breaks:1},f.x,f.y-30,p,Math.sign(f.x-p.x)||p.face);powerSmoke(p.x,p.y,'#8fe8d7',18);};
+const baseCarmelActor=drawActor;
+drawActor=function(e,alpha){baseCarmelActor(e,alpha);if(e.carmelBuff>0){cx.save();cx.globalAlpha=.35;cx.strokeStyle='#9ae9ce';cx.lineWidth=1.2;cx.beginPath();cx.ellipse(e.x-G.cam,e.y-28,20+Math.sin(G.tick*.12)*3,38,Math.sin(G.tick*.04)*.2,0,7);cx.stroke();cx.restore();}};
+
+window.__yoru = { actionNear: actionNear, doAction: doAction, actionUi: actionUi, HAIFA_ID, HAIFA_ZONES, HAIFA_TASKS, startHaifa, haifaData, haifaFloor, haifaNear, completeHaifaTask, haifaStep, bossStep, damageFoe, killFoe,  safeRespawn, NINJA_POWERS, choosePower, selectedPower, powerStep, stepPowerOrb, clearPowerPath, stormStep, spawnShot, shotsStep, statusStep, drawStorm, ac,  startMotionTrial, MOVES, startMove, playerStep, bodyBox, solidHit, settings:S, G: G, makeFoe: makeFoe, press: press, release: release, simulate: simulate, startRun: startRun, SHEET: SHEET, get loopClock(){return {last,acc};}, get audio(){return AC;}, get musicBus(){return musBus;}, get canvas(){return cv;}, clear: clearPressed, IN: IN, loadStage: loadStage, st: () => ST, drawRunCycle: drawRunCycle, menuStep: menuStep, navReach: navReach, cityData: cityData, zoneAt: zoneAt, nextStage: nextStage, cheer: cheer, silenceBell: silenceBell, FROST: FROST, DRUM: DRUM, PULSE: PULSE, PW: PW, activatePower: activatePower, gainPower: gainPower, ME: ME, tryShootAir: tryShootAir, onBack: onBack, askExit: askExit, SY: SY, questEvent: questEvent, setWeap: setWeap, openWsel: openWsel, openShop: openShop, AUD: AUD, AUD_BAD: () => AUD_BAD, pauseGame: pauseGame, resumeGame: resumeGame, layoutTouch: layoutTouch, CTL: CTL, MUS: MUS, R3: () => window.R3, doContinue: doContinue, safeSpot: safeSpot, loadSave: loadSave, writeSave: writeSave, continueRun: continueRun, toTitle: toTitle, ATLAS: ATLAS, IMG: IMG, navMove: navMove, navOk: navOk, cameraStep: cameraStep, powerTier: powerTier, completeCityMission: completeCityMission, cityMissions: CITY_MISSIONS, alertStep: alertStep, drawWalk: drawWalk, composeChar: composeChar, RECIPE: RECIPE };
 loadSprites().then(() => { try { if (window.THREE && S.r3) { R3.init(); const gl = document.getElementById('gl'); if (gl && S.r3 === false) gl.style.display = 'none'; } } catch (e) { console.warn('3D unavailable', e); } requestAnimationFrame(frame); }).catch(e => console.error(e));
 })();
 </script>
